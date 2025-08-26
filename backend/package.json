@@ -7,13 +7,17 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "test": "nodemon main.js"
+    "dev": "nodemon main.js",
+    "start": "node main.js"
   },
   "devDependencies": {
     "express": "^5.1.0",
     "nodemon": "^3.1.10"
   },
   "dependencies": {
-    "gdal-async": "^3.11.3"
+    "@tmcw/togeojson": "^7.1.2",
+    "child_process": "^1.0.2",
+    "gdal-async": "^3.11.3",
+    "ogr2ogr": "^6.0.1"
   }
 }

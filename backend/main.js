@@ -1,17 +1,48 @@
 const express = require("express");
 const gdal = require("gdal-async");
+const { kmzToGeoJSON,  listAllLayers} = require('./test'); 
 
 const app = express();
 const port = 3000;
 
+
+const LAYER = "الأماكن المؤقتة"
+const PATH = "./JED-HADA-FDH04_HADA FDH-4.kmz"
+const ZIPPATH = `/vsizip//app/${PATH}/doc.kml`
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("testing");
+  console.log("yo");
+  res.send("testes");
 });
 
 app.post("/data", (req, res) => {
   res.json({ received: req.body });
+});
+
+app.get('/convert', async (_req, res) => {
+  try {
+    const gj = await kmzToGeoJSON(PATH, LAYER);
+    res.json(gj.features); // Note this is case sensitive
+    console.log(gj);// Logs full JSON in Docker
+
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+    console.log("Conversion Failed");
+  }
+});
+
+app.get('/list', async (_req, res) => {
+  try {
+    const list = await listAllLayers(PATH);
+    res.json(list); 
+    console.log(list);
+
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+    console.log("List Failed");
+  }
 });
 
 app.listen(port, () => {
