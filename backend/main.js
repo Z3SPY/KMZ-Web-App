@@ -1,4 +1,6 @@
 const express = require("express");
+const gdal = require("gdal-async");
+
 const app = express();
 const port = 3000;
 
