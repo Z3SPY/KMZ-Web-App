@@ -7,6 +7,7 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
+    "migrate": "node-pg-migrate",
     "dev": "nodemon --watch . --ext js,json,env main.js",
     "start": "node main.js"
   },
