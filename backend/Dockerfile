@@ -1,8 +1,8 @@
 
-FROM node:20-alpine
+FROM node:20
 WORKDIR /app
 COPY package*.json ./
-RUN npm i
+RUN npm ci
 COPY . .
 EXPOSE 3000 3000
 CMD ["npm","run","test"]
