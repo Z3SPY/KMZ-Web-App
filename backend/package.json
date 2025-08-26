@@ -7,17 +7,20 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "dev": "nodemon main.js",
+    "dev": "nodemon --watch . --ext js,json,env main.js",
     "start": "node main.js"
   },
   "devDependencies": {
     "express": "^5.1.0",
+    "node-pg-migrate": "^8.0.3",
     "nodemon": "^3.1.10"
   },
   "dependencies": {
     "@tmcw/togeojson": "^7.1.2",
     "child_process": "^1.0.2",
+    "dotenv": "^17.2.1",
     "gdal-async": "^3.11.3",
-    "ogr2ogr": "^6.0.1"
+    "ogr2ogr": "^6.0.1",
+    "pg": "^8.16.3"
   }
 }

@@ -9,8 +9,10 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true # helps dev file-watching in containers
     volumes:
-      - ./frontend:/app
       - /app/node_modules
+      - ./frontend:/app
+    networks:
+      - kwa-network
 
   backend:
     build:
@@ -21,5 +23,34 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true # helps dev file-watching in containers
     volumes:
-      - ./backend/:/app
       - /app/node_modules
+      - ./backend/:/app
+    networks:
+      - kwa-network
+
+  database:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_DB: kwa
+      POSTGRES_USER: kwa
+      POSTGRES_PASSWORD: mypass
+    container_name: postgis_db
+    restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U kwa" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    networks:
+      - kwa-network
+
+networks:
+  kwa-network:
+    driver: bridge
+
+volumes:
+  postgis_data:
