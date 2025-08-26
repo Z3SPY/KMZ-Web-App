@@ -1,7 +1,7 @@
-const express = require("express");
-const gdal = require("gdal-async");
-const { kmzToGeoJSON, listAllLayers } = require("./test");
-const { dbInit } = require("./database");
+import express from "express";
+import gdal from "gdal-async";
+import { kmzToGeoJSON, listAllLayers } from "./test.js";
+import { dbInit } from "./database.js";
 
 const app = express();
 const port = 3000;

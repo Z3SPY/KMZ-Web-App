@@ -1,11 +1,10 @@
-// test.js (CJS)
-const { ogr2ogr } = require("ogr2ogr");
+import { ogr2ogr } from "ogr2ogr";
+import { promisify } from "util";
+import { exec } from "child_process";
 
-const { promisify } = require("util");
-const { exec } = require("child_process");
 const execAsync = promisify(exec);
 
-async function kmzToGeoJSON(inputPath, layer) {
+export async function kmzToGeoJSON(inputPath, layer) {
   const { data } = await ogr2ogr(inputPath, {
     format: "GeoJSON",
     options: ["-sql", `SELECT * FROM "${layer}"`],
@@ -14,7 +13,7 @@ async function kmzToGeoJSON(inputPath, layer) {
   return data;
 }
 
-async function listAllLayers(inputPath) {
+export async function listAllLayers(inputPath) {
   const { stdout } = await execAsync(`ogrinfo -ro -q -so "${inputPath}"`, {
     maxBuffer: 1024 * 1024 * 16,
   });
@@ -31,5 +30,3 @@ async function listAllLayers(inputPath) {
   console.log(layers);
   return layers;
 }
-
-module.exports = { kmzToGeoJSON, listAllLayers };
