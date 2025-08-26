@@ -1,12 +1,11 @@
-const { Pool } = require("pg");
-require("dotenv").config();
+import { Pool } from "pg";
+import dotenv from "dotenv";
+dotenv.config();
 
 const pool = new Pool();
 
-async function dbInit() {
+export async function dbInit() {
   const client = await pool.connect();
 
   client.release();
 }
-
-module.exports = { dbInit };

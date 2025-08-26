@@ -7,8 +7,8 @@
  * @param run {() => void | undefined}
  * @returns {Promise<void> | void}
  */
-const { PgLiteral } = require("node-pg-migrate");
-const up = (pgm) => {
+import { PgLiteral } from "node-pg-migrate";
+export const up = (pgm) => {
   pgm.createTable("LAYERS", {
     id: { type: "uuid", notNull: true, primaryKey: true },
     name: { type: "name", notNull: true },
@@ -68,10 +68,8 @@ const up = (pgm) => {
  * @param run {() => void | undefined}
  * @returns {Promise<void> | void}
  */
-const down = (pgm) => {
+export const down = (pgm) => {
   pgm.dropTable("LAYERS", { ifExists: true, cascade: true });
   pgm.dropTable("FEATURES", { ifExists: true, cascade: true });
   pgm.dropTable("UPLOADS", { ifExists: true, cascade: true });
 };
-
-module.exports = { up, down };
