@@ -17,7 +17,10 @@ export async function listAllLayers(inputPath) {
   const { stdout } = await execAsync(`ogrinfo -ro -q -so "${inputPath}"`, {
     maxBuffer: 1024 * 1024 * 16,
   });
+
+  console.log("==STDOUT==");
   console.log(stdout);
+  console.log("==========");
 
   const layers = [];
 
@@ -27,6 +30,8 @@ export async function listAllLayers(inputPath) {
     if (m) layers.push(m[1]);
   }
 
+  console.log("==LAYERS==");
   console.log(layers);
+  console.log("==========");
   return layers;
 }

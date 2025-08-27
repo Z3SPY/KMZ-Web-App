@@ -34,28 +34,27 @@ type MyProps = {
   visibility: number;
 };
 
-
 async function ExtractAllKMZFeatures() {
-    return axios.get(`http://localhost:3000/list`)
-    .then(res => {
+  return axios
+    .get(`http://localhost:3000/list`)
+    .then((res) => {
       console.log(res.data);
       return res.data;
     })
-    .catch(e => {
+    .catch((e) => {
       console.log(`Failed Call Returns: ${e}`);
       throw e;
     });
 }
 
-
-
 export default function Map() {
-    const elRef = useRef(null);
-    const mapRef = useRef(null);
-    
+  const elRef = useRef(null);
+  const mapRef = useRef(null);
 
-    /* Extracted Features */
-    const [extractedFeatures, setExtractedFeatures] = useState<Feature<LineString, MyProps>[] | null>(null);
+  /* Extracted Features */
+  const [extractedFeatures, setExtractedFeatures] = useState<
+    Feature<LineString, MyProps>[] | null
+  >(null);
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
@@ -73,46 +72,37 @@ export default function Map() {
 
     const style = { color: "#ff7800", weight: 4, opacity: 0.8 };
 
-    
-
-
-
     (async () => {
-        try {
-            const feats = await ExtractAllKMZFeatures();
-            setExtractedFeatures(feats);
+      try {
+        const feats = await ExtractAllKMZFeatures();
+        setExtractedFeatures(feats);
 
-            // Leaflet accepts Feature[] or a FeatureCollection
-            const fc: FeatureCollection<LineString, MyProps> = {
-                type: "FeatureCollection",
-                features: feats,
-            };
+        // Leaflet accepts Feature[] or a FeatureCollection
+        const fc: FeatureCollection<LineString, MyProps> = {
+          type: "FeatureCollection",
+          features: feats,
+        };
 
+        /** Stores Feature as */
+        const layer = L.geoJSON(fc, {
+          style,
+          onEachFeature: (f, layer) => {
+            if (f.properties?.name) layer.bindPopup(f.properties.name);
+          },
+        }).addTo(map);
 
-            /** Stores Feature as */
-            const layer = L.geoJSON(fc, {
-                style,
-                onEachFeature: (f, layer) => {
-                if (f.properties?.name) layer.bindPopup(f.properties.name);
-                },
-            }).addTo(map);
-  
-
-            // Auto-center & zoom to the lines
-            const boundRef = layer.getBounds();
-            if (boundRef.isValid()) {
-                map.fitBounds(boundRef, { padding: [20, 20] });
-            } else {
-                map.setView([0,0], 2);
-            }
-            
-        } catch (e) {
-            console.log(`ERROR: ${e}`);
-            map.setView([0,0], 2);
+        // Auto-center & zoom to the lines
+        const boundRef = layer.getBounds();
+        if (boundRef.isValid()) {
+          map.fitBounds(boundRef, { padding: [20, 20] });
+        } else {
+          map.setView([0, 0], 2);
         }
-
+      } catch (e) {
+        console.log(`ERROR: ${e}`);
+        map.setView([0, 0], 2);
+      }
     })();
-
 
     return () => {
       map.remove();
