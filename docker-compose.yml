@@ -9,8 +9,8 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true # helps dev file-watching in containers
     volumes:
-      - /app/node_modules
       - ./frontend:/app
+      - /app/node_modules
     networks:
       - kwa-network
 
@@ -23,10 +23,13 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true # helps dev file-watching in containers
     volumes:
-      - /app/node_modules
       - ./backend/:/app
+      - /app/node_modules
     networks:
       - kwa-network
+    depends_on:
+      database: # Waits for database to be ready
+        condition: service_healthy
 
   database:
     image: postgis/postgis:17-3.5
@@ -42,7 +45,7 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - "5432:5432"
+      - "5433:5432" # Change if needed
     volumes:
       - postgis_data:/var/lib/postgresql/data
     networks:

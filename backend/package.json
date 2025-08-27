@@ -19,6 +19,7 @@
   "dependencies": {
     "@tmcw/togeojson": "^7.1.2",
     "child_process": "^1.0.2",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "gdal-async": "^3.11.3",
     "ogr2ogr": "^6.0.1",
