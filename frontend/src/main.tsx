@@ -4,9 +4,9 @@ import "./index.css";
 import Map from "../Pages/Map.js";
 import React from "react";
 
-
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Map />
-  </StrictMode>
+  </StrictMode>,
 );
+
