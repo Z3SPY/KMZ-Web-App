@@ -9,7 +9,7 @@ function gdalPath(p) {
   const ext = path.extname(p).toLowerCase();
   if (ext === ".kmz") {
     const abs = p.startsWith("/") ? p : `/${p}`;
-    return `/vsizip//app/${abs}/doc.kml`;
+    return `/vsizip//${abs}/doc.kml`;
   }
   return p;
 }
