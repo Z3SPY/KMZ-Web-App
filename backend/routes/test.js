@@ -9,8 +9,8 @@ export const testRoutes = Router();
 /* all Layers: ["Temporary Places","الأماكن المؤقتة","4-1.kmz",
 "قياس المسار  6   7.kmz","7-3.kmz","7-4.kmz","الأماكن المؤقتة","7-4.kmz","الأماكن المؤقتة","الأماكن المؤقتة"] */
 const LAYER = "الأماكن المؤقتة";
-const PATH = "./JED-HADA-FDH04_HADA FDH-4.kmz";
-const ZIPPATH = `/vsizip//app/${PATH}/doc.kml`;
+const PATH = "uploads/JED-HADA-FDH04_HADA FDH-4.kmz";
+const ZIPPATH = `/vsizip//app${PATH}/doc.kml`;
 
 // ===================
 // POST REQEUSTS

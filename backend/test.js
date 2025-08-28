@@ -9,7 +9,7 @@ function gdalPath(p) {
   const ext = path.extname(p).toLowerCase();
   if (ext === ".kmz") {
     const abs = p.startsWith("/") ? p : `/${p}`;
-    return `/vsizip//${abs}/doc.kml`;
+    return `/vsizip//app/${abs}/doc.kml`;
   }
   return p;
 }
@@ -25,6 +25,7 @@ export async function kmzToGeoJSON(inputPath, layer) {
 
 export async function listAllLayers(inputPath) {
   const src = gdalPath(inputPath);
+  console.log(src);
   const { stdout } = await execAsync(`ogrinfo -ro -q -so "${src}"`, {
     maxBuffer: 1024 * 1024 * 16,
   });
