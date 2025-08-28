@@ -8,7 +8,7 @@ export async function getFiles() {
     const filelist = await client.query(`SELECT id, name FROM "FILES"`);
 
     await client.query("COMMIT");
-    return JSON.stringify(filelist.rows);
+    return filelist.rows;
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
