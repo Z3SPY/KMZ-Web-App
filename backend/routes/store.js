@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { kmzToGeoJSON, listAllLayers } from "../test.js";
+import { kmzToGeoJSON, listAllLayers } from "../utils.js";
 import { storeToDB } from "../database.js";
 export const testRoutes = Router();
 // ===================
@@ -15,20 +15,10 @@ const ZIPPATH = `/vsizip//app${PATH}/doc.kml`;
 // ===================
 // POST REQEUSTS
 // ===================
-
-testRoutes.post("/data", (req, res) => {
-  res.json({ received: req.body });
-});
-
 // ===================
 // GET REQEUSTS
 // ===================
 //
-
-testRoutes.get("/", (req, res) => {
-  console.log("yo");
-  res.send("testes");
-});
 
 testRoutes.get("/convert", async (req, res) => {
   try {

@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import L from 'leaflet';
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
 
 import type { Feature, FeatureCollection, LineString } from "geojson";
 
 import axios from "axios";
 import React from "react";
 import Floating from "../Component/Floating";
-
 
 type MyProps = {
   Name: string;
@@ -51,9 +49,11 @@ export default function Map() {
       maxZoom: 19,
     }).addTo(map);
 
-    return () => { map.remove(); mapRef.current = null; };
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
-
 
   function handleGeoJSON(fc: FeatureCollection<LineString, MyProps>) {
     const map = mapRef.current!;
@@ -76,14 +76,10 @@ export default function Map() {
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
   }
 
-
   return (
     <>
-  
       <Floating handleGeoJSON={handleGeoJSON} />
       <div ref={elRef} style={{ height: "100vh", width: "100vw" }} />
-
     </>
-  
   );
 }
