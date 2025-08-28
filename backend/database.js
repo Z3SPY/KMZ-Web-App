@@ -3,10 +3,10 @@ import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 dotenv.config();
 
-const pool = new Pool();
+export const PGISPool = new Pool();
 
 export async function storeToDB(name, layers) {
-  const client = await pool.connect();
+  const client = await PGISPool.connect();
   try {
     await client.query("BEGIN");
 
