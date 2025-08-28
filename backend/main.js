@@ -4,6 +4,7 @@ import cors from "cors";
 import { layerRoutes } from "./routes/layers.js";
 import { featureRoutes } from "./routes/features.js";
 import { testRoutes } from "./routes/test.js";
+import { filesRoutes } from "./routes/files.js";
 
 // Fix in prod
 const allowedOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
@@ -31,6 +32,7 @@ app.use(express.json());
 // ===================
 // Routes
 // ===================
+app.use("/files", filesRoutes);
 app.use("/layers", layerRoutes);
 app.use("/features", featureRoutes);
 app.use("/test", testRoutes);
