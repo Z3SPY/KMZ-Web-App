@@ -1,11 +1,21 @@
 import { ogr2ogr } from "ogr2ogr";
 import { promisify } from "util";
 import { exec } from "child_process";
+import path from "path";
 
 const execAsync = promisify(exec);
 
+function gdalPath(p) {
+  const ext = path.extname(p).toLowerCase();
+  if (ext === ".kmz") {
+    const abs = p.startsWith("/") ? p : `/${p}`;
+    return `/vsizip//${abs}/doc.kml`;
+  }
+  return p;
+}
+
 export async function kmzToGeoJSON(inputPath, layer) {
-  const { data } = await ogr2ogr(inputPath, {
+  const { data } = await ogr2ogr(gdalPath(inputPath), {
     format: "GeoJSON",
     options: ["-sql", `SELECT * FROM "${layer}"`],
   });
@@ -14,7 +24,8 @@ export async function kmzToGeoJSON(inputPath, layer) {
 }
 
 export async function listAllLayers(inputPath) {
-  const { stdout } = await execAsync(`ogrinfo -ro -q -so "${inputPath}"`, {
+  const src = gdalPath(inputPath);
+  const { stdout } = await execAsync(`ogrinfo -ro -q -so "${src}"`, {
     maxBuffer: 1024 * 1024 * 16,
   });
 
