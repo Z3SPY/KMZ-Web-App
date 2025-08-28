@@ -10,3 +10,7 @@ ogr2ogr -f GeoJSON /vsistdout/ \
   "/vsizip//app/JED-HADA-FDH04_HADA FDH-4.kmz/doc.kml" \
   "4-1.kmz"
 //
+
+# migrations
+docker compose exec backend npx node-pg-migrate up
+
