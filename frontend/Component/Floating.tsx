@@ -47,6 +47,15 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     }
   }
 
+  async function handleDelete(fileId) {
+    try {
+      await axios.delete(`http://localhost:3000/files/${fileId}`);
+      getKMZList();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   async function handleFileUpload() {
     if (!file) return;
 
@@ -200,6 +209,13 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
                         updateMapView(l.id)
                       }
                     >
+                      <button
+                        onClick={() => {
+                          handleDelete(l.id);
+                        }}
+                      >
+                        
+                      </button>
                       {shortenName(l.name)}
                     </li>
                   );

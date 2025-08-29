@@ -30,3 +30,17 @@ export async function getFileAsLayersAndFeatures(fileId) {
 
   return result;
 }
+
+export async function deleteFile(id) {
+  const client = await PGISPool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`DELETE FROM "FILES" WHERE id = $1`, [id]);
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
