@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-import type { Feature, FeatureCollection, LineString } from "geojson";
+import type { Feature, FeatureCollection, LineString, Geometry  } from "geojson";
 
 import axios from "axios";
 import React from "react";
@@ -79,9 +79,21 @@ export default function Map() {
     }
 
     const style = { color: "#ff7800", weight: 4, opacity: 0.8 };
+
     const layer = L.geoJSON(fc as any, {
-      style: { color: "#ff7800", weight: 4, opacity: 0.8 },
-      pointToLayer: (_feature, latlng) => L.circleMarker(latlng, { radius: 6 }),
+      style: style,
+
+      // Circle Markers
+      pointToLayer: (_feature, latlng) => 
+      L.circleMarker(latlng, { 
+        radius: 6 ,
+        color: style.color,
+        weight: 2,
+        fillOpacity: 0.7
+      }),
+      
+      // Skip Empty Geometries 
+      filter: (f) => !!f?.geometry,
       onEachFeature: (f, lyr) => {
         const name = f?.properties?.Name ?? f?.properties?.name;
         if (name) lyr.bindPopup(String(name));
@@ -95,7 +107,7 @@ export default function Map() {
       map.flyToBounds(bounds, { padding: [20, 20], maxZoom: 17, animate: true });
     } else {
       console.log(`Invalid Bounds: ${bounds}`);
-      map.setView([0, 0], 2);
+      //map.setView([0, 0], 2);
     }
   }
 

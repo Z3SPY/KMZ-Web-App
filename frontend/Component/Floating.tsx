@@ -1,4 +1,4 @@
-import React, { ChangeEvent, use, useEffect, useState } from "react";
+import React, { ChangeEvent, useEffect, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import "./Floating.css";
 import axios from "axios";
@@ -41,6 +41,41 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     setOpenLayer(prev => (prev === id ? null : id)); // only one open
   }
 
+
+  //** ========================================= */
+  // EXTRA HELPER FOR FILTERING CHILDREN 
+  const [currentLayers, setCurrentLayers] = useState<any[] | null>(null);
+
+  //filtered FeatureCollection from checked children
+  function buildFC(children: Children[], layersSource?: any[]): FeatureCollection {
+    const allowed = new Set(children.filter(c => c.isChecked).map(c => c.id));
+    const features =
+      (layersSource ?? currentLayers ?? [])
+        .filter((l: any) => allowed.has(l.id))
+        .flatMap((l: any) =>
+          (l.features ?? []).map((f: any) => ({
+            type: "Feature",
+            geometry: f.geom,
+            properties: f.props ?? {},
+            id: f.id,
+          }))
+        );
+    return { type: "FeatureCollection", features } as FeatureCollection;
+  }
+  
+
+  // toggle a child and immediately update the map
+  function toggleChildCheckbox(childId: string, checked: boolean) {
+    setOpenLayerChildren(prev => {
+      if (!prev) return prev;
+      const next = prev.map(c => (c.id === childId ? { ...c, isChecked: checked } : c));
+      if (handleGeoJSON) handleGeoJSON(buildFC(next));
+      return next;
+    });
+  }
+
+  //** ========================================= */
+
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files) {
       const selectedFile = e.target.files[0];
@@ -59,7 +94,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     }
   }
 
-  async function handleDelete(fileId) {
+  async function handleDelete(fileId : string) {
     try {
       await axios.delete(`http://localhost:3000/files/${fileId}`);
       getKMZList();
@@ -131,18 +166,17 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       const resp = await axios.get(
         `http://localhost:3000/files/${fileId}/mapview`,
       );
+
       const layers = resp.data?.layers ?? [];
 
-      const features = layers.flatMap((l: any) =>
-        (l.features ?? []).map((f: any) => ({
-          type: "Feature",
-          geometry: f.geom,
-          properties: f.props ?? {},
-          id: f.id,
-        })),
-      );
+      // open this file’s dropdown
+      setOpenLayer(fileId);
+
+      // save raw layers for filtering later
+      setCurrentLayers(layers);
+
       
-      const childrenLayer = layers.map((l : any) => {
+      const childrenLayer : Children[] = layers.map((l : any) => {
         return ({
           id: l.id, 
           name:  l.name,
@@ -152,10 +186,8 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
       setOpenLayerChildren(childrenLayer);
 
-      const fc = { type: "FeatureCollection", features } as FeatureCollection;
 
-
-      handleGeoJSON?.(fc);
+      handleGeoJSON?.(buildFC(childrenLayer, layers));
     } catch (e) {
       console.error(e);
     }
@@ -251,7 +283,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 updateMapView(l.id);
-                                toggleOpen(l.id); // Handle TOggle
+                                // toggleOpen(l.id); // Handle TOggle
                               }}
                             >
                               View
@@ -275,21 +307,22 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
                         {isOpen && (
                          <div className="List-dropdown" id={`panel-${l.id}`}> 
                             { openLayerChildren ? 
-                              openLayerChildren.map((l) => {
+                              openLayerChildren.map((child) => {
                                 return (
                                   <>
                                     <div className="Content">
                                       <input
                                         type="checkbox"
-                                        id={`child-${l.id}`}
-                                        checked={l.isChecked}
+                                        id={`child-${child.id}`}
+                                        checked={child.isChecked}
                                         onChange={(e) => {
-                                          console.log(`${l.name} toggled:`, e.target.checked);
-                                          // update state here if needed
+                                          console.log(`${child.name} toggled:`, e.target.checked);
+                                          e.stopPropagation();
+                                          toggleChildCheckbox(child.id, e.target.checked);
                                         }}
                                         style={{cursor: "pointer", margin: "0 10px"}}
                                       />
-                                      <label htmlFor={`child-${l.id}`}>{l.name}</label>
+                                      <label htmlFor={`child-${child.id}`}>{child.name}</label>
                                     </div>
                                   </>
                                 );
