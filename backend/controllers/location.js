@@ -54,6 +54,7 @@ export async function getOneLoc(layers) {
   for (const layer of layers) {
     for (const feature of layer.features) {
       loc = await getLocation(feature.geometry);
+      console.log(loc);
       if (loc !== null) return loc;
     }
   }

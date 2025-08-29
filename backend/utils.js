@@ -37,7 +37,8 @@ export async function listAllLayers(inputPath) {
 
   //String Extract
   for (const line of stdout.split(/\r?\n/)) {
-    const m = line.match(/^\s*\d+:\s+(.+?)(?:\s+\(|$)/);
+    // const m = line.match(/^\s*\d+:\s+(.+?)(?:\s+\(|$)/);
+    const m = line.match(/^\s*\d+:\s+(.+$)/);
     if (m) layers.push(m[1]);
   }
 

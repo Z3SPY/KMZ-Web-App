@@ -14,7 +14,7 @@ type Children = {
   id: string;
   name: string;
   isChecked: boolean;
-}
+};
 
 interface FloatingProps {
   handleGeoJSON?: (fc: any) => void;
@@ -34,41 +34,47 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   const [uploadButtonStatus, setUploadButtonStatus] = useState(false);
 
   const [layerList, setLayerList] = useState<KmzFile[] | null>(null);
-  const [openLayer, setOpenLayer] = useState<string | null >(null); // i.e "item1" : true , "item2": true, etc.
-  const [openLayerChildren, setOpenLayerChildren] = useState<Children[] | null>(null);
+  const [openLayer, setOpenLayer] = useState<string | null>(null); // i.e "item1" : true , "item2": true, etc.
+  const [openLayerChildren, setOpenLayerChildren] = useState<Children[] | null>(
+    null,
+  );
 
   function toggleOpen(id: string) {
-    setOpenLayer(prev => (prev === id ? null : id)); // only one open
+    setOpenLayer((prev) => (prev === id ? null : id)); // only one open
   }
 
-
   //** ========================================= */
-  // EXTRA HELPER FOR FILTERING CHILDREN 
+  // EXTRA HELPER FOR FILTERING CHILDREN
   const [currentLayers, setCurrentLayers] = useState<any[] | null>(null);
 
   //filtered FeatureCollection from checked children
-  function buildFC(children: Children[], layersSource?: any[]): FeatureCollection {
-    const allowed = new Set(children.filter(c => c.isChecked).map(c => c.id));
-    const features =
-      (layersSource ?? currentLayers ?? [])
-        .filter((l: any) => allowed.has(l.id))
-        .flatMap((l: any) =>
-          (l.features ?? []).map((f: any) => ({
-            type: "Feature",
-            geometry: f.geom,
-            properties: f.props ?? {},
-            id: f.id,
-          }))
-        );
+  function buildFC(
+    children: Children[],
+    layersSource?: any[],
+  ): FeatureCollection {
+    const allowed = new Set(
+      children.filter((c) => c.isChecked).map((c) => c.id),
+    );
+    const features = (layersSource ?? currentLayers ?? [])
+      .filter((l: any) => allowed.has(l.id))
+      .flatMap((l: any) =>
+        (l.features ?? []).map((f: any) => ({
+          type: "Feature",
+          geometry: f.geom,
+          properties: f.props ?? {},
+          id: f.id,
+        })),
+      );
     return { type: "FeatureCollection", features } as FeatureCollection;
   }
-  
 
   // toggle a child and immediately update the map
   function toggleChildCheckbox(childId: string, checked: boolean) {
-    setOpenLayerChildren(prev => {
+    setOpenLayerChildren((prev) => {
       if (!prev) return prev;
-      const next = prev.map(c => (c.id === childId ? { ...c, isChecked: checked } : c));
+      const next = prev.map((c) =>
+        c.id === childId ? { ...c, isChecked: checked } : c,
+      );
       if (handleGeoJSON) handleGeoJSON(buildFC(next));
       return next;
     });
@@ -94,7 +100,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     }
   }
 
-  async function handleDelete(fileId : string) {
+  async function handleDelete(fileId: string) {
     try {
       await axios.delete(`http://localhost:3000/files/${fileId}`);
       getKMZList();
@@ -131,21 +137,18 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       setStatus("success");
       setUploadProgress(100);
 
-
-
       const list = await getKMZList();
 
       const newItem =
-        (data?.fileId && list?.find(x => x.id === data.fileId)) || //Search for new file
-        list?.find(x => x.name === file.name) ||
+        (data?.fileId && list?.find((x) => x.id === data.fileId)) || //Search for new file
+        list?.find((x) => x.name === file.name) ||
         (list && list[list.length - 1]);
-      
+
       if (newItem) {
         await updateMapView(newItem.id); // opens dropdown + builds children + updates map
       } else if (data?.ok && data?.geojson && handleGeoJSON) {
         handleGeoJSON(data.geojson as FeatureCollection);
       }
-
 
       setTimeout(() => {
         setUploadButtonStatus(false);
@@ -172,7 +175,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       const resp = await axios.get<KmzFile[]>("http://localhost:3000/files");
       setLayerList(resp.data);
       console.log("files:", resp.data);
-      return resp.data; 
+      return resp.data;
     } catch (e) {
       console.log(`ERROR: ${e}`);
     }
@@ -192,17 +195,15 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       // save raw layers for filtering later
       setCurrentLayers(layers);
 
-      
-      const childrenLayer : Children[] = layers.map((l : any) => {
-        return ({
-          id: l.id, 
-          name:  l.name,
-          isChecked: true
-        }) 
+      const childrenLayer: Children[] = layers.map((l: any) => {
+        return {
+          id: l.id,
+          name: l.name,
+          isChecked: true,
+        };
       });
 
       setOpenLayerChildren(childrenLayer);
-
 
       handleGeoJSON?.(buildFC(childrenLayer, layers));
     } catch (e) {
@@ -275,23 +276,23 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
                   return (
                     <>
                       <li
-                      className={`List-item ${isOpen ? "is-open": ""}`}
-                      key={l.id}
-                    
-                      
-                      role="button"
-                      aria-expanded={isOpen}
-                      aria-controls={`panel-${l.id}`}
-            
-                      onKeyDown={(e) =>
-                        (e.key === "Enter" || e.key === " ") &&
-                        updateMapView(l.id)
-                      }>
-                      
+                        className={`List-item ${isOpen ? "is-open" : ""}`}
+                        key={l.id}
+                        role="button"
+                        aria-expanded={isOpen}
+                        aria-controls={`panel-${l.id}`}
+                        onKeyDown={(e) =>
+                          (e.key === "Enter" || e.key === " ") &&
+                          updateMapView(l.id)
+                        }
+                      >
                         <div className="List-data">
-                          <p> 
-                            <span className={`caret ${isOpen ? "down" : ""}`} aria-hidden />
-                            {shortenName(l.name)} 
+                          <p>
+                            <span
+                              className={`caret ${isOpen ? "down" : ""}`}
+                              aria-hidden
+                            />
+                            {shortenName(l.name)}
                           </p>
 
                           <div className="List-actions">
@@ -316,43 +317,47 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
                             </button>
                           </div>
                         </div>
-                        
 
-                        
-                        
                         {/* DROP DOWN */}
                         {isOpen && (
-                         <div className="List-dropdown" id={`panel-${l.id}`}> 
-                            { openLayerChildren ? 
-                              openLayerChildren.map((child) => {
-                                return (
-                                  <>
-                                    <div className="Content">
-                                      <input
-                                        type="checkbox"
-                                        id={`child-${child.id}`}
-                                        checked={child.isChecked}
-                                        onChange={(e) => {
-                                          console.log(`${child.name} toggled:`, e.target.checked);
-                                          e.stopPropagation();
-                                          toggleChildCheckbox(child.id, e.target.checked);
-                                        }}
-                                        style={{cursor: "pointer", margin: "0 10px"}}
-                                      />
-                                      <label htmlFor={`child-${child.id}`}>{child.name}</label>
-                                    </div>
-                                  </>
-                                );
-                              })
-                            : null
-                            }
-                         </div> 
+                          <div className="List-dropdown" id={`panel-${l.id}`}>
+                            {openLayerChildren
+                              ? openLayerChildren.map((child) => {
+                                  return (
+                                    <>
+                                      <div className="Content">
+                                        <input
+                                          type="checkbox"
+                                          id={`child-${child.id}`}
+                                          checked={child.isChecked}
+                                          onChange={(e) => {
+                                            console.log(
+                                              `${child.name} toggled:`,
+                                              e.target.checked,
+                                            );
+                                            e.stopPropagation();
+                                            toggleChildCheckbox(
+                                              child.id,
+                                              e.target.checked,
+                                            );
+                                          }}
+                                          style={{
+                                            cursor: "pointer",
+                                            margin: "0 10px",
+                                          }}
+                                        />
+                                        <label htmlFor={`child-${child.id}`}>
+                                          {child.name}
+                                        </label>
+                                      </div>
+                                    </>
+                                  );
+                                })
+                              : null}
+                          </div>
                         )}
-
                       </li>
-                      
                     </>
-                    
                   );
                 })
               : null}
