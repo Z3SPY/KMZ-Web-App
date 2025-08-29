@@ -16,12 +16,16 @@ function computeCentroid(bbox) {
   };
 }
 async function reverseGeocode({ lat, lon }) {
-  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`;
   const res = await fetch(url, {
     headers: { "User-Agent": "geojson-locator" },
   });
   const data = await res.json();
-  return data.display_name || null;
+
+  console.log("=====================");
+  console.log(data.address);
+  console.log("=====================");
+  return data.address || null;
 }
 
 async function getLocation(geometry) {
