@@ -1,16 +1,17 @@
 
 .Floating {
-    width: 15vw;
+    width: 15rem;
     height: 90vh;
     margin: 2rem;
     position: fixed;
-    background-color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.815);
     z-index: 999;
-    box-shadow: 1px 1px 10px rgba(0, 0, 0, 0.541);
+    box-shadow: 1px 1px 2rem rgba(0, 0, 0, 0.541);
     right: 0;
     display: flex;
     flex-direction: column;
     color: black;
+    border-radius: 15px;
 }
 
 .file-wrapper {
@@ -18,8 +19,11 @@
     display: flex;
     height: auto;
     flex-direction: column;
-    background-color: aliceblue;
-    gap: 10px
+    background-color: rgba(0, 0, 0, 0.144);
+    flex-grow: 1;
+    justify-content: center;
+    margin: 7.5px;
+    border-radius: 15px;
 }
 
 .file-info {
@@ -29,7 +33,27 @@
     height: auto;
 }
 
+.file {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* adds "..." */
+  }
 
+
+.file::file-selector-button {
+  background-color: #222831; /* custom color */
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+
+.file::file-selector-button:hover {
+  background-color: #393E46; /* hover effect */
+}
 
 /* Upload Progress Bar */
 
@@ -39,12 +63,19 @@
 
 .upload-btn {
     border-radius: 15px;
+    background-color: #222831;
+    transition: all 0.2s;
+}
+
+.upload-btn:hover {
+    transform: translateY(5px);
+    border-color: #222831;
 }
 
 .upload-wrapper {
     height: 2.5rem;
     border-radius: 15px;
-    background-color: gray;
+    background-color: #222831;
 }
 
 .upload-bar {
@@ -58,4 +89,51 @@
 .upload p {
     color: black;
     font-size: medium;
+}
+
+
+/* LAYER LIST */
+
+.List {
+    flex-grow: 5;
+    border: rgba(85, 82, 82, 0.815) solid 1px;
+    margin: 7.5px;
+    border-radius: 15px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 65%;
+}
+
+.List h4 {
+    margin: auto;
+    text-align: center;
+    padding: 2px;
+    border-bottom: #222831 solid 1px;
+}
+
+.List-wrapper {
+    list-style: none;
+    padding-left: 0px; 
+    margin: 0;
+    position: relative;
+       
+}
+
+.List-wrapper li {
+    border-bottom: #222831 solid 1px;
+    padding: 5px;
+  
+    height: 40px;         
+    line-height: 40px;         
+    
+    white-space: nowrap;       
+    overflow: hidden;        
+    text-overflow: ellipsis;    
+  }
+
+
+
+.List-wrapper li:hover{
+   background-color: #2228311f;
+   cursor: pointer;
 }
