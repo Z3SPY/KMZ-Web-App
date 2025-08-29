@@ -19,7 +19,6 @@ export async function getFiles() {
   }
 }
 
-
 export async function getFileAsLayersAndFeatures(fileId) {
   const layers = await getLayers(fileId);
   const result = [];
@@ -31,3 +30,4 @@ export async function getFileAsLayersAndFeatures(fileId) {
 
   return result;
 }
+

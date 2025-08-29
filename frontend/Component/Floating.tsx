@@ -6,9 +6,9 @@ import axios from "axios";
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 type KmzFile = {
-  id:string,
-  name:string
-}
+  id: string;
+  name: string;
+};
 
 interface FloatingProps {
   handleGeoJSON?: (fc: any) => void;
@@ -16,16 +16,16 @@ interface FloatingProps {
 
 function shortenName(name: string, maxLength = 25) {
   if (name.length <= maxLength) return name;
-  const start = name.slice(0, 12);   // first part
-  const end = name.slice(-10);       // last part
+  const start = name.slice(0, 12); // first part
+  const end = name.slice(-10); // last part
   return `${start}...${end}`;
 }
-
 
 export default function Floating({ handleGeoJSON }: FloatingProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadButtonStatus, setUploadButtonStatus] = useState(false);
 
   const [layerList, setLayerList] = useState<KmzFile[] | null>(null);
 
@@ -52,6 +52,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
     setStatus("uploading");
     setUploadProgress(0); // Reset on call
+    setUploadButtonStatus(true);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -75,6 +76,14 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
       setStatus("success");
       setUploadProgress(100);
+      getKMZList();
+      setTimeout(() => {
+        setUploadButtonStatus(false);
+
+        // clear the file status
+        // NOTE: comment out if not applicable
+        setFile(null);
+      }, 3000);
 
       if (data?.ok && data?.geojson && handleGeoJSON) {
         handleGeoJSON(data.geojson as FeatureCollection);
@@ -88,37 +97,35 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   async function getKMZList() {
     try {
       const resp = await axios.get<KmzFile[]>("http://localhost:3000/files");
-      setLayerList(resp.data);               
-      console.log('files:', resp.data);       
-  
+      setLayerList(resp.data);
+      console.log("files:", resp.data);
     } catch (e) {
       console.log(`ERROR: ${e}`);
     }
-
   }
-
 
   async function updateMapView(fileId: string) {
     try {
-      const resp = await axios.get(`http://localhost:3000/files/${fileId}/mapview`);
+      const resp = await axios.get(
+        `http://localhost:3000/files/${fileId}/mapview`,
+      );
       const layers = resp.data?.layers ?? [];
-  
+
       const features = layers.flatMap((l: any) =>
         (l.features ?? []).map((f: any) => ({
           type: "Feature",
-          geometry: f.geom,               
-          properties: f.props ?? {},        
+          geometry: f.geom,
+          properties: f.props ?? {},
           id: f.id,
-        }))
+        })),
       );
-  
+
       const fc = { type: "FeatureCollection", features } as FeatureCollection;
       handleGeoJSON?.(fc);
     } catch (e) {
       console.error(e);
     }
   }
-
 
   const didFetch = React.useRef(false);
   useEffect(() => {
@@ -146,7 +153,11 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
             </div>
           )}
           {file && status !== "uploading" && (
-            <button className="upload-btn" onClick={handleFileUpload}>
+            <button
+              disabled={uploadButtonStatus}
+              className="upload-btn"
+              onClick={handleFileUpload}
+            >
               {" "}
               Upload{" "}
             </button>
@@ -173,25 +184,27 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
         </div>
 
         <div className="List">
-            <h4> KMZ FILES </h4>
-            <ul className="List-wrapper">
-                { layerList && layerList.length > 0 ? 
-
-                  layerList.map((l) => {
-                    return(
-                      <li 
+          <h4> KMZ FILES </h4>
+          <ul className="List-wrapper">
+            {layerList && layerList.length > 0
+              ? layerList.map((l) => {
+                  return (
+                    <li
                       key={l.id}
                       onClick={() => updateMapView(l.id)}
                       role="button"
                       tabIndex={0}
-                      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && updateMapView(l.id)}>
-                        {shortenName(l.name)}
-                      </li>
-                    )
-                  })
-                
-                : null }
-            </ul>
+                      onKeyDown={(e) =>
+                        (e.key === "Enter" || e.key === " ") &&
+                        updateMapView(l.id)
+                      }
+                    >
+                      {shortenName(l.name)}
+                    </li>
+                  );
+                })
+              : null}
+          </ul>
         </div>
       </div>
     </>
