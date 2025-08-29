@@ -13,7 +13,7 @@ export const up = (pgm) => {
     id: { type: "uuid", notNull: true, primaryKey: true },
     name: { type: "text", notNull: true },
     state: { type: "text", notNull: true },
-    postcode: { type: "text", notNull: true },
+    postcode: { type: "text", notNull: false },
     country: { type: "text", notNull: true },
     uploadedAt: {
       type: "timestamptz",
