@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { getFiles, getFileAsLayersAndFeatures } from "../controllers/files.js";
+import {
+  getFiles,
+  getFileAsLayersAndFeatures,
+  deleteFile,
+} from "../controllers/files.js";
 
 export const filesRoutes = Router();
 
@@ -20,3 +24,13 @@ filesRoutes.get("/:id/mapview", async (req, res) => {
   }
 });
 
+filesRoutes.delete("/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    await deleteFile(id);
+    res.sendStatus(200);
+  } catch (error) {
+    console.warn("Delete file error: ", error);
+    res.sendStatus(500);
+  }
+});
