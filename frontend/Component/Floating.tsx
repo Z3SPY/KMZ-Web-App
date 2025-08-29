@@ -130,7 +130,23 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       );
       setStatus("success");
       setUploadProgress(100);
-      getKMZList();
+
+
+
+      const list = await getKMZList();
+
+      const newItem =
+        (data?.fileId && list?.find(x => x.id === data.fileId)) || //Search for new file
+        list?.find(x => x.name === file.name) ||
+        (list && list[list.length - 1]);
+      
+      if (newItem) {
+        await updateMapView(newItem.id); // opens dropdown + builds children + updates map
+      } else if (data?.ok && data?.geojson && handleGeoJSON) {
+        handleGeoJSON(data.geojson as FeatureCollection);
+      }
+
+
       setTimeout(() => {
         setUploadButtonStatus(false);
         // clear the file status
@@ -151,11 +167,12 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     }
   }
 
-  async function getKMZList() {
+  async function getKMZList(): Promise<KmzFile[] | undefined> {
     try {
       const resp = await axios.get<KmzFile[]>("http://localhost:3000/files");
       setLayerList(resp.data);
       console.log("files:", resp.data);
+      return resp.data; 
     } catch (e) {
       console.log(`ERROR: ${e}`);
     }
