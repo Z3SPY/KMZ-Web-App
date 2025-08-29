@@ -13,8 +13,8 @@ export async function storeToDB(name, layers) {
     const loc = await getOneLoc(layers);
 
     const kmzRes = await client.query(
-      `INSERT INTO "FILES" (id, name, location) VALUES ($1, $2, $3) RETURNING id`,
-      [uuidv4(), name, loc],
+      `INSERT INTO "FILES" (id, name, state, postcode, country) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [uuidv4(), name, loc.state, loc.postcode, loc.country],
     );
     const kmzId = kmzRes.rows[0].id;
 
@@ -29,7 +29,7 @@ export async function storeToDB(name, layers) {
 
       for (const feature of layer.features) {
         await client.query(
-          `INSERT INTO "FEATURES" (id, layer_id, geom, props) VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4)`,
+          `INSERT INTO "FEATURES" (id, layer_id, geom, props) VALUES ($1, $2, ST_Force3D(ST_GeomFromGeoJSON($3)), $4)`,
           [
             uuidv4(),
             layerId,
