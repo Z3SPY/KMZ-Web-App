@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useEffect, useState } from "react";
+import React, { ChangeEvent, use, useEffect, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import "./Floating.css";
 import axios from "axios";
@@ -10,13 +10,19 @@ type KmzFile = {
   name: string;
 };
 
+type Children = {
+  id: string;
+  name: string;
+  isChecked: boolean;
+}
+
 interface FloatingProps {
   handleGeoJSON?: (fc: any) => void;
 }
 
 function shortenName(name: string, maxLength = 25) {
   if (name.length <= maxLength) return name;
-  const start = name.slice(0, 12); // first part
+  const start = name.slice(0, 10); // first part
   const end = name.slice(-10); // last part
   return `${start}...${end}`;
 }
@@ -28,6 +34,12 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   const [uploadButtonStatus, setUploadButtonStatus] = useState(false);
 
   const [layerList, setLayerList] = useState<KmzFile[] | null>(null);
+  const [openLayer, setOpenLayer] = useState<string | null >(null); // i.e "item1" : true , "item2": true, etc.
+  const [openLayerChildren, setOpenLayerChildren] = useState<Children[] | null>(null);
+
+  function toggleOpen(id: string) {
+    setOpenLayer(prev => (prev === id ? null : id)); // only one open
+  }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files) {
@@ -129,8 +141,20 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           id: f.id,
         })),
       );
+      
+      const childrenLayer = layers.map((l : any) => {
+        return ({
+          id: l.id, 
+          name:  l.name,
+          isChecked: true
+        }) 
+      });
+
+      setOpenLayerChildren(childrenLayer);
 
       const fc = { type: "FeatureCollection", features } as FeatureCollection;
+
+
       handleGeoJSON?.(fc);
     } catch (e) {
       console.error(e);
@@ -194,30 +218,91 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
         </div>
 
         <div className="List">
-          <h4> KMZ FILES </h4>
+          <h4> Stored Queries </h4>
           <ul className="List-wrapper">
             {layerList && layerList.length > 0
               ? layerList.map((l) => {
+                  const isOpen = openLayer === l.id;
                   return (
-                    <li
+                    <>
+                      <li
+                      className={`List-item ${isOpen ? "is-open": ""}`}
                       key={l.id}
-                      onClick={() => updateMapView(l.id)}
+                    
+                      
                       role="button"
-                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      aria-controls={`panel-${l.id}`}
+            
                       onKeyDown={(e) =>
                         (e.key === "Enter" || e.key === " ") &&
                         updateMapView(l.id)
-                      }
-                    >
-                      <button
-                        onClick={() => {
-                          handleDelete(l.id);
-                        }}
-                      >
-                        
-                      </button>
-                      {shortenName(l.name)}
-                    </li>
+                      }>
+                      
+                        <div className="List-data">
+                          <p> 
+                            <span className={`caret ${isOpen ? "down" : ""}`} aria-hidden />
+                            {shortenName(l.name)} 
+                          </p>
+
+                          <div className="List-actions">
+                            <button
+                              className="List-view"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateMapView(l.id);
+                                toggleOpen(l.id); // Handle TOggle
+                              }}
+                            >
+                              View
+                            </button>
+                            <button
+                              className="List-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(l.id);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        
+
+                        
+                        
+                        {/* DROP DOWN */}
+                        {isOpen && (
+                         <div className="List-dropdown" id={`panel-${l.id}`}> 
+                            { openLayerChildren ? 
+                              openLayerChildren.map((l) => {
+                                return (
+                                  <>
+                                    <div className="Content">
+                                      <input
+                                        type="checkbox"
+                                        id={`child-${l.id}`}
+                                        checked={l.isChecked}
+                                        onChange={(e) => {
+                                          console.log(`${l.name} toggled:`, e.target.checked);
+                                          // update state here if needed
+                                        }}
+                                        style={{cursor: "pointer", margin: "0 10px"}}
+                                      />
+                                      <label htmlFor={`child-${l.id}`}>{l.name}</label>
+                                    </div>
+                                  </>
+                                );
+                              })
+                            : null
+                            }
+                         </div> 
+                        )}
+
+                      </li>
+                      
+                    </>
+                    
                   );
                 })
               : null}
