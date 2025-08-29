@@ -54,6 +54,11 @@ const upload = multer({
 });
 
 uploadRoutes.post("/", upload.single("file"), async (req, res) => {
+
+  // WE NEED TO CHECK IF ALREADY EXISTS THEN RETURN ERROR IF IT ALREADY DOES? 
+  // IDK how to ACCOMODATE FOR CHANGES 
+  // WHAT IF SOMEONE WANTED TO CHANGE REEDIT? A KMZ WITH THE
+
   try {
     if (!req.file) {
       return res
@@ -85,9 +90,10 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
       layers.map(async (layerName) => {
         try {
           const gj = await kmzToGeoJSON(filePath, layerName);
-          if (!gj || gj.type !== "FeatureCollection")
+          if (!gj || gj.type !== "FeatureCollection") {
             throw new Error(`invalid FC for layer "${layerName}"`);
-          return gj.features || [];
+          }
+          return { name: String(layerName).trim(), features: gj.features || [] };
         } catch (err) {
           console.error(`Layer convert failed (${layerName}):`, err);
           return [];
@@ -100,7 +106,7 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
 
     // DB store
     try {
-      await storeToDB(filePath, [featureCollection]);
+      await storeToDB(req.file.originalname, featuresArrays);
     } catch (e) {
       console.warn("storeToDB failed (continuing):", e);
     }

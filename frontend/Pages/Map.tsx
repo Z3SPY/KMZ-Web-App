@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import L from "leaflet";
+import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import type { Feature, FeatureCollection, LineString } from "geojson";
@@ -41,7 +41,17 @@ export default function Map() {
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
-    const map = L.map(elRef.current, { center: [0, 0], zoom: 2 });
+
+    const bounds = L.latLngBounds(L.latLng(-85, -180), L.latLng(85, 180));
+
+    const map = L.map(
+      elRef.current, 
+      { center: [0, 0], 
+        zoom: 2,
+        maxBounds: bounds,
+        maxBoundsViscosity: 1.0, 
+        worldCopyJump: true, 
+      },);
     mapRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -57,6 +67,12 @@ export default function Map() {
 
   function handleGeoJSON(fc: FeatureCollection<LineString, MyProps>) {
     const map = mapRef.current!;
+    console.log(`FC: `, fc);
+
+    if (!map || !fc || !Array.isArray(fc.features)) return;
+    map.invalidateSize();
+
+
     if (layerRef.current) {
       map.removeLayer(layerRef.current);
       layerRef.current = null;
@@ -64,16 +80,23 @@ export default function Map() {
 
     const style = { color: "#ff7800", weight: 4, opacity: 0.8 };
     const layer = L.geoJSON(fc as any, {
-      style,
+      style: { color: "#ff7800", weight: 4, opacity: 0.8 },
+      pointToLayer: (_feature, latlng) => L.circleMarker(latlng, { radius: 6 }),
       onEachFeature: (f, lyr) => {
-        if (f.properties?.Name) lyr.bindPopup(String(f.properties.Name));
+        const name = f?.properties?.Name ?? f?.properties?.name;
+        if (name) lyr.bindPopup(String(name));
       },
     }).addTo(map);
 
     layerRef.current = layer;
 
     const bounds = layer.getBounds();
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
+    if (bounds.isValid()) {
+      map.flyToBounds(bounds, { padding: [20, 20], maxZoom: 17, animate: true });
+    } else {
+      console.log(`Invalid Bounds: ${bounds}`);
+      map.setView([0, 0], 2);
+    }
   }
 
   return (

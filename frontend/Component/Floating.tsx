@@ -1,18 +1,33 @@
-import React, { ChangeEvent, useState } from "react";
+import React, { ChangeEvent, useEffect, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import "./Floating.css";
 import axios from "axios";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
+type KmzFile = {
+  id:string,
+  name:string
+}
+
 interface FloatingProps {
   handleGeoJSON?: (fc: any) => void;
 }
+
+function shortenName(name: string, maxLength = 25) {
+  if (name.length <= maxLength) return name;
+  const start = name.slice(0, 12);   // first part
+  const end = name.slice(-10);       // last part
+  return `${start}...${end}`;
+}
+
 
 export default function Floating({ handleGeoJSON }: FloatingProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  const [layerList, setLayerList] = useState<KmzFile[] | null>(null);
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files) {
@@ -70,6 +85,48 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     }
   }
 
+  async function getKMZList() {
+    try {
+      const resp = await axios.get<KmzFile[]>("http://localhost:3000/files");
+      setLayerList(resp.data);               
+      console.log('files:', resp.data);       
+  
+    } catch (e) {
+      console.log(`ERROR: ${e}`);
+    }
+
+  }
+
+
+  async function updateMapView(fileId: string) {
+    try {
+      const resp = await axios.get(`http://localhost:3000/files/${fileId}/mapview`);
+      const layers = resp.data?.layers ?? [];
+  
+      const features = layers.flatMap((l: any) =>
+        (l.features ?? []).map((f: any) => ({
+          type: "Feature",
+          geometry: f.geom,               
+          properties: f.props ?? {},        
+          id: f.id,
+        }))
+      );
+  
+      const fc = { type: "FeatureCollection", features } as FeatureCollection;
+      handleGeoJSON?.(fc);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+
+  const didFetch = React.useRef(false);
+  useEffect(() => {
+    if (didFetch.current) return;
+    didFetch.current = true;
+    getKMZList();
+  }, []);
+
   return (
     <>
       <div className="Floating">
@@ -113,6 +170,28 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
           {status === "success" && <p> File Uploaded Successfully! </p>}
           {status === "error" && <p> File Upload Failed! </p>}
+        </div>
+
+        <div className="List">
+            <h4> KMZ FILES </h4>
+            <ul className="List-wrapper">
+                { layerList && layerList.length > 0 ? 
+
+                  layerList.map((l) => {
+                    return(
+                      <li 
+                      key={l.id}
+                      onClick={() => updateMapView(l.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && updateMapView(l.id)}>
+                        {shortenName(l.name)}
+                      </li>
+                    )
+                  })
+                
+                : null }
+            </ul>
         </div>
       </div>
     </>

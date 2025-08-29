@@ -1,4 +1,6 @@
 import { PGISPool } from "../database.js";
+import { getLayers } from "./layers.js";
+import { getFeatures } from "./features.js";
 
 export async function getFiles() {
   const client = await PGISPool.connect();
@@ -15,4 +17,17 @@ export async function getFiles() {
   } finally {
     client.release();
   }
+}
+
+
+export async function getFileAsLayersAndFeatures(fileId) {
+  const layers = await getLayers(fileId);
+  const result = [];
+
+  for (const layer of layers) {
+    const features = await getFeatures(layer.id);
+    result.push({ id: layer.id, name: layer.name, features });
+  }
+
+  return result;
 }
