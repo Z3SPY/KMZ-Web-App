@@ -3,6 +3,7 @@ import {
   getFiles,
   getFileAsLayersAndFeatures,
   deleteFile,
+  getFilesWithLoc,
 } from "../controllers/files.js";
 
 export const filesRoutes = Router();
@@ -12,6 +13,14 @@ filesRoutes.get("/", async (req, res) => {
   console.log("---------");
   console.log("FILES: ", files);
   console.log("---------");
+  res.json(files);
+});
+
+filesRoutes.get("/locations", async (req, res) => {
+  const files = await getFilesWithLoc();
+  console.log("----FILES AND LOCATIONS-----");
+  console.log(files);
+  console.log("----------------------------");
   res.json(files);
 });
 

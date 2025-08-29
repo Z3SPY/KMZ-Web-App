@@ -66,12 +66,13 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
-
     //Region / City Check
     const { region, city } = req.body || {};
     if (!region || !city) {
-       return res.status(400).json({ ok: false, error: "Region and City are required." });
-     }
+      return res
+        .status(400)
+        .json({ ok: false, error: "Region and City are required." });
+    }
 
     const filePath = req.file.path;
     console.log("UPLOAD OK:", {
