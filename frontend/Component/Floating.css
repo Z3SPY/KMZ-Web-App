@@ -5,7 +5,7 @@ html, body {
 
 .Floating {
     width: 20rem;
-    height: 45vh;
+    height: 60vh;
     margin: 2rem;
     position: fixed;
     background-color: rgba(255, 255, 255, 0.815);
@@ -24,7 +24,7 @@ html, body {
     height: auto;
     flex-direction: column;
     background-color: rgba(0, 0, 0, 0.144);
-    flex-grow: 10rem;
+    flex-grow: 1;
     justify-content: center;
     margin: 7.5px;
     border-radius: 15px;
@@ -65,10 +65,23 @@ html, body {
 
 }
 
+.upload-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+
 .upload-btn {
+    margin-top: 10px;
     border-radius: 15px;
     background-color: #222831;
     transition: all 0.2s;
+}
+
+.upload-meta select {
+    background-color: white;
+    color: #222;
 }
 
 .upload-btn:hover {
@@ -76,16 +89,19 @@ html, body {
     border-color: #222831;
 }
 
-.upload-wrapper {
-    height: 2.5rem;
+.upload-wrapper,
+.upload-bar {
+    margin-top: 10px;
+    height: 2rem;
     border-radius: 15px;
+}
+
+.upload-wrapper {
     background-color: #222831;
 }
 
 .upload-bar {
-    height: 2.5rem;
     width: 100%;
-    border-radius: 15px;
     background-color: skyblue;
     transition: all 1s;
 }
@@ -229,4 +245,68 @@ html, body {
 }
 
 
+
+/**/ 
+.Filter {
+    padding: 10px 0px;
+}
+
+#Filter-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.Filter-content {
+    display: none;
+    position: absolute;
+    top: 200px;
+    left: -210px;
+    background-color: #f1f1f1;
+    min-width: 200px;        
+    max-width: 320px;         
+    max-height: 200px;      
+    min-height: 200px;         
+    overflow-y: auto;         
+    box-shadow: 1px 8px 16px rgba(0, 0, 0, 0.411);
+    z-index: 1000;
+    border-radius: 8px;
+    padding: 6px 0;
+  }
+.Filter-content.show {
+    
+    display: flex;
+    column-gap: 1px;
+    flex-direction: column;
+    max-height: 200px;      
+    min-height: 200px;         
+
+}
+
+.Filter-content button {
+    background-color: transparent;
+    border-bottom: black solid 1px;
+    color: black;
+    border-radius: 0px;
+    
+}
+
+.Filter-content button:hover {
+    border-color: black;
+    background-color: #22222238;
+}
+
+.Filter-btn {
+    background-color: #222;
+    color: white;
+    padding: 7px;
+    margin-left: 10px;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.Filter-btn:hover, .Filter-btn:focus {
+    border-color: #222;
+}
 

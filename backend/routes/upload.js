@@ -66,6 +66,13 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
+
+    //Region / City Check
+    const { region, city } = req.body || {};
+    if (!region || !city) {
+       return res.status(400).json({ ok: false, error: "Region and City are required." });
+     }
+
     const filePath = req.file.path;
     console.log("UPLOAD OK:", {
       originalname: req.file.originalname,
@@ -110,7 +117,7 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
 
     // DB store
     try {
-      await storeToDB(req.file.originalname, featuresArrays);
+      await storeToDB(req.file.originalname, featuresArrays, region, city);
     } catch (e) {
       console.warn("storeToDB failed (continuing):", e);
       return res.status(500).json({

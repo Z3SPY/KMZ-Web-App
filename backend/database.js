@@ -6,15 +6,15 @@ dotenv.config();
 
 export const PGISPool = new Pool();
 
-export async function storeToDB(name, layers) {
+export async function storeToDB(name, layers, region, city) {
   const client = await PGISPool.connect();
   try {
     await client.query("BEGIN");
     const loc = await getOneLoc(layers);
 
     const kmzRes = await client.query(
-      `INSERT INTO "FILES" (id, name, state, postcode, country) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [uuidv4(), name, loc.state, loc.postcode, loc.country],
+      `INSERT INTO "FILES" (id, name, region, city, postcode, country) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [uuidv4(), name, region, city, loc.postcode, loc.country],
     );
     const kmzId = kmzRes.rows[0].id;
 
@@ -29,7 +29,7 @@ export async function storeToDB(name, layers) {
 
       for (const feature of layer.features) {
         await client.query(
-          `INSERT INTO "FEATURES" (id, layer_id, geom, props) VALUES ($1, $2, ST_Force3D(ST_GeomFromGeoJSON($3)), $4)`,
+          `INSERT INTO "FEATURES" (id, layer_id, geom, props) VALUES ($1, $2, ST_Force3D(ST_GeomFromGeoJSON($3)), $4)`,    //Handles conversion
           [
             uuidv4(),
             layerId,
