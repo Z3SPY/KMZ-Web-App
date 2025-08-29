@@ -80,6 +80,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
         // clear the file status
         // NOTE: comment out if not applicable
         setFile(null);
+        setStatus("idle");
       }, 3000);
 
       if (data?.ok && data?.geojson && handleGeoJSON) {
