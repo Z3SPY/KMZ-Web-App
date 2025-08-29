@@ -30,4 +30,3 @@ export async function getFileAsLayersAndFeatures(fileId) {
 
   return result;
 }
-

@@ -54,16 +54,16 @@ const upload = multer({
 });
 
 uploadRoutes.post("/", upload.single("file"), async (req, res) => {
-
-  // WE NEED TO CHECK IF ALREADY EXISTS THEN RETURN ERROR IF IT ALREADY DOES? 
-  // IDK how to ACCOMODATE FOR CHANGES 
+  // WE NEED TO CHECK IF ALREADY EXISTS THEN RETURN ERROR IF IT ALREADY DOES?
+  // IDK how to ACCOMODATE FOR CHANGES
   // WHAT IF SOMEONE WANTED TO CHANGE REEDIT? A KMZ WITH THE
 
   try {
     if (!req.file) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "No file received (field must be 'file')." });
+      return res.status(400).json({
+        ok: false,
+        error: "No file received (field must be 'file').",
+      });
     }
 
     const filePath = req.file.path;
@@ -93,7 +93,10 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
           if (!gj || gj.type !== "FeatureCollection") {
             throw new Error(`invalid FC for layer "${layerName}"`);
           }
-          return { name: String(layerName).trim(), features: gj.features || [] };
+          return {
+            name: String(layerName).trim(),
+            features: gj.features || [],
+          };
         } catch (err) {
           console.error(`Layer convert failed (${layerName}):`, err);
           return [];
@@ -109,9 +112,12 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
       await storeToDB(req.file.originalname, featuresArrays);
     } catch (e) {
       console.warn("storeToDB failed (continuing):", e);
+      return res.status(500).json({
+        ok: false,
+        error: "Database error",
+      });
     }
-
-    return res.json({
+    return res.status(200).json({
       ok: true,
       features: features.length,
       geojson: featureCollection,

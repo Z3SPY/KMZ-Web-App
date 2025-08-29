@@ -56,7 +56,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
     const formData = new FormData();
     formData.append("file", file);
-
     try {
       const { data } = await axios.post(
         "http://localhost:3000/upload",
@@ -73,13 +72,11 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           },
         },
       );
-
       setStatus("success");
       setUploadProgress(100);
       getKMZList();
       setTimeout(() => {
         setUploadButtonStatus(false);
-
         // clear the file status
         // NOTE: comment out if not applicable
         setFile(null);
@@ -89,8 +86,11 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
         handleGeoJSON(data.geojson as FeatureCollection);
       }
     } catch {
+      alert("File upload failed!");
       setStatus("error");
       setUploadProgress(0);
+      setUploadButtonStatus(false);
+      setFile(null);
     }
   }
 
