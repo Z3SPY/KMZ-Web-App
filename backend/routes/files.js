@@ -11,7 +11,6 @@ filesRoutes.get("/", async (req, res) => {
   res.json(files);
 });
 
-
 filesRoutes.get("/:id/mapview", async (req, res) => {
   try {
     const data = await getFileAsLayersAndFeatures(req.params.id);
@@ -20,3 +19,4 @@ filesRoutes.get("/:id/mapview", async (req, res) => {
     res.status(500).json({ ok: false, error: String(err) });
   }
 });
+
