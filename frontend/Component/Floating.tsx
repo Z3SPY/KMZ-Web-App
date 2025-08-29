@@ -10,13 +10,19 @@ type KmzFile = {
   name: string;
 };
 
+type Children = {
+  id: string;
+  name: string;
+  isChecked: boolean;
+}
+
 interface FloatingProps {
   handleGeoJSON?: (fc: any) => void;
 }
 
 function shortenName(name: string, maxLength = 25) {
   if (name.length <= maxLength) return name;
-  const start = name.slice(0, 12); // first part
+  const start = name.slice(0, 10); // first part
   const end = name.slice(-10); // last part
   return `${start}...${end}`;
 }
@@ -28,6 +34,47 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   const [uploadButtonStatus, setUploadButtonStatus] = useState(false);
 
   const [layerList, setLayerList] = useState<KmzFile[] | null>(null);
+  const [openLayer, setOpenLayer] = useState<string | null >(null); // i.e "item1" : true , "item2": true, etc.
+  const [openLayerChildren, setOpenLayerChildren] = useState<Children[] | null>(null);
+
+  function toggleOpen(id: string) {
+    setOpenLayer(prev => (prev === id ? null : id)); // only one open
+  }
+
+
+  //** ========================================= */
+  // EXTRA HELPER FOR FILTERING CHILDREN 
+  const [currentLayers, setCurrentLayers] = useState<any[] | null>(null);
+
+  //filtered FeatureCollection from checked children
+  function buildFC(children: Children[], layersSource?: any[]): FeatureCollection {
+    const allowed = new Set(children.filter(c => c.isChecked).map(c => c.id));
+    const features =
+      (layersSource ?? currentLayers ?? [])
+        .filter((l: any) => allowed.has(l.id))
+        .flatMap((l: any) =>
+          (l.features ?? []).map((f: any) => ({
+            type: "Feature",
+            geometry: f.geom,
+            properties: f.props ?? {},
+            id: f.id,
+          }))
+        );
+    return { type: "FeatureCollection", features } as FeatureCollection;
+  }
+  
+
+  // toggle a child and immediately update the map
+  function toggleChildCheckbox(childId: string, checked: boolean) {
+    setOpenLayerChildren(prev => {
+      if (!prev) return prev;
+      const next = prev.map(c => (c.id === childId ? { ...c, isChecked: checked } : c));
+      if (handleGeoJSON) handleGeoJSON(buildFC(next));
+      return next;
+    });
+  }
+
+  //** ========================================= */
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files) {
@@ -47,7 +94,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     }
   }
 
-  async function handleDelete(fileId) {
+  async function handleDelete(fileId : string) {
     try {
       await axios.delete(`http://localhost:3000/files/${fileId}`);
       getKMZList();
@@ -119,19 +166,28 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       const resp = await axios.get(
         `http://localhost:3000/files/${fileId}/mapview`,
       );
+
       const layers = resp.data?.layers ?? [];
 
-      const features = layers.flatMap((l: any) =>
-        (l.features ?? []).map((f: any) => ({
-          type: "Feature",
-          geometry: f.geom,
-          properties: f.props ?? {},
-          id: f.id,
-        })),
-      );
+      // open this file’s dropdown
+      setOpenLayer(fileId);
 
-      const fc = { type: "FeatureCollection", features } as FeatureCollection;
-      handleGeoJSON?.(fc);
+      // save raw layers for filtering later
+      setCurrentLayers(layers);
+
+      
+      const childrenLayer : Children[] = layers.map((l : any) => {
+        return ({
+          id: l.id, 
+          name:  l.name,
+          isChecked: true
+        }) 
+      });
+
+      setOpenLayerChildren(childrenLayer);
+
+
+      handleGeoJSON?.(buildFC(childrenLayer, layers));
     } catch (e) {
       console.error(e);
     }
@@ -194,30 +250,92 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
         </div>
 
         <div className="List">
-          <h4> KMZ FILES </h4>
+          <h4> Stored Queries </h4>
           <ul className="List-wrapper">
             {layerList && layerList.length > 0
               ? layerList.map((l) => {
+                  const isOpen = openLayer === l.id;
                   return (
-                    <li
+                    <>
+                      <li
+                      className={`List-item ${isOpen ? "is-open": ""}`}
                       key={l.id}
-                      onClick={() => updateMapView(l.id)}
+                    
+                      
                       role="button"
-                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      aria-controls={`panel-${l.id}`}
+            
                       onKeyDown={(e) =>
                         (e.key === "Enter" || e.key === " ") &&
                         updateMapView(l.id)
-                      }
-                    >
-                      <button
-                        onClick={() => {
-                          handleDelete(l.id);
-                        }}
-                      >
-                        
-                      </button>
-                      {shortenName(l.name)}
-                    </li>
+                      }>
+                      
+                        <div className="List-data">
+                          <p> 
+                            <span className={`caret ${isOpen ? "down" : ""}`} aria-hidden />
+                            {shortenName(l.name)} 
+                          </p>
+
+                          <div className="List-actions">
+                            <button
+                              className="List-view"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateMapView(l.id);
+                                // toggleOpen(l.id); // Handle TOggle
+                              }}
+                            >
+                              View
+                            </button>
+                            <button
+                              className="List-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(l.id);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        
+
+                        
+                        
+                        {/* DROP DOWN */}
+                        {isOpen && (
+                         <div className="List-dropdown" id={`panel-${l.id}`}> 
+                            { openLayerChildren ? 
+                              openLayerChildren.map((child) => {
+                                return (
+                                  <>
+                                    <div className="Content">
+                                      <input
+                                        type="checkbox"
+                                        id={`child-${child.id}`}
+                                        checked={child.isChecked}
+                                        onChange={(e) => {
+                                          console.log(`${child.name} toggled:`, e.target.checked);
+                                          e.stopPropagation();
+                                          toggleChildCheckbox(child.id, e.target.checked);
+                                        }}
+                                        style={{cursor: "pointer", margin: "0 10px"}}
+                                      />
+                                      <label htmlFor={`child-${child.id}`}>{child.name}</label>
+                                    </div>
+                                  </>
+                                );
+                              })
+                            : null
+                            }
+                         </div> 
+                        )}
+
+                      </li>
+                      
+                    </>
+                    
                   );
                 })
               : null}
