@@ -44,14 +44,13 @@ export default function Map() {
 
     const bounds = L.latLngBounds(L.latLng(-85, -180), L.latLng(85, 180));
 
-    const map = L.map(
-      elRef.current, 
-      { center: [0, 0], 
-        zoom: 2,
-        maxBounds: bounds,
-        maxBoundsViscosity: 1.0, 
-        worldCopyJump: true, 
-      },);
+    const map = L.map(elRef.current, {
+      center: [0, 0],
+      zoom: 2,
+      maxBounds: bounds,
+      maxBoundsViscosity: 1.0,
+      worldCopyJump: true,
+    });
     mapRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -71,7 +70,6 @@ export default function Map() {
 
     if (!map || !fc || !Array.isArray(fc.features)) return;
     map.invalidateSize();
-
 
     if (layerRef.current) {
       map.removeLayer(layerRef.current);
@@ -104,7 +102,11 @@ export default function Map() {
 
     const bounds = layer.getBounds();
     if (bounds.isValid()) {
-      map.flyToBounds(bounds, { padding: [20, 20], maxZoom: 17, animate: true });
+      map.flyToBounds(bounds, {
+        padding: [20, 20],
+        maxZoom: 17,
+        animate: true,
+      });
     } else {
       console.log(`Invalid Bounds: ${bounds}`);
       //map.setView([0, 0], 2);
