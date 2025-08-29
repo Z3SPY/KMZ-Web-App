@@ -22,7 +22,7 @@ async function reverseGeocode({ lat, lon }) {
   });
   const data = await res.json();
 
-  console.log("=====================");
+  console.log("========= GEOCODE ============");
   console.log(data.address);
   console.log("=====================");
   return data.address || null;

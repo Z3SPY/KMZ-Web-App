@@ -5,6 +5,27 @@ import axios from "axios";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
+const REGION_OPTIONS = ["CR", "ER", "WR", "SR"];
+const CITY_OPTIONS = [
+  "BURAYDAH",
+  "AHSA",
+  "JEDDAH",
+  "JIZAN",
+  "KHUBAR",
+  "ABHA",
+  "DAMMAM",
+  "MAKKAH",
+  "HAIL",
+  "Khamis Mushait",
+  "TAIF",
+  "JUBAIL",
+  "MADINAH",
+  "KHARJ",
+  "RIYADH",
+];
+
+
+
 type KmzFile = {
   id: string;
   name: string;
@@ -28,14 +49,34 @@ function shortenName(name: string, maxLength = 25) {
 }
 
 export default function Floating({ handleGeoJSON }: FloatingProps) {
+
+  /* File Data */
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadButtonStatus, setUploadButtonStatus] = useState(false);
 
+  const [uploadRegion, setUploadRegion] = useState<string>("");
+  const [uploadCity, setUploadCity] = useState<string>("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  /** Layer and List */
   const [layerList, setLayerList] = useState<KmzFile[] | null>(null);
   const [openLayer, setOpenLayer] = useState<string | null >(null); // i.e "item1" : true , "item2": true, etc.
   const [openLayerChildren, setOpenLayerChildren] = useState<Children[] | null>(null);
+
+
+  /** Filter Select */
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+
+  const [openDropdown, setOpenDropdown] = useState<"region" | "city" | null>(null);
+
+
+  function toggleDropdown(name: "region" | "city") {
+    setOpenDropdown((curr) => (curr === name ? null : name));
+  }
+  
 
   function toggleOpen(id: string) {
     setOpenLayer(prev => (prev === id ? null : id)); // only one open
@@ -87,10 +128,13 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       if (!fileExtensionn || !allowedExtensions.includes(fileExtensionn)) {
         alert("Invalid file type! Please upload a .KMZ file");
         setFile(null);
+        setUploadRegion("");   
+        setUploadCity("");    
         return;
-      } else {
-        setFile(selectedFile);
       }
+      setFile(selectedFile);
+      setFormError(null);  
+
     }
   }
 
@@ -106,12 +150,23 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   async function handleFileUpload() {
     if (!file) return;
 
+    if (!uploadRegion || !uploadCity) {
+      alert("Fill Country and Region")
+      return;
+    }
+  
+
+    setFormError(null);
     setStatus("uploading");
     setUploadProgress(0); // Reset on call
     setUploadButtonStatus(true);
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("region", uploadRegion);
+    formData.append("city", uploadCity);
+  
+
     try {
       const { data } = await axios.post(
         "http://localhost:3000/upload",
@@ -220,6 +275,8 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   return (
     <>
       <div className="Floating">
+
+        {/** Separate Component */}
         <div className="file-wrapper">
           <input
             className="file"
@@ -228,12 +285,48 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
             accept=".kml,.kmz"
             onChange={handleFileChange}
           ></input>
+
           {file && (
-            <div className="file-info">
-              <p> File Name: {file.name} </p>
-              <p> File Size: {(file.size / 1024).toFixed(2)} </p>
-              <p> File Type: {file.type} </p>
-            </div>
+            <>
+              <div className="file-info">
+                <p> File Name: {file.name} </p>
+                <p> File Size: {(file.size / 1024).toFixed(2)} KB </p>
+                <p> File Type: {file.type} </p>
+              </div>
+
+              <div className="upload-meta">
+                <label>
+                  Region&nbsp;
+                  <select
+                    value={uploadRegion}
+                    onChange={(e) => setUploadRegion(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>Select Region</option>
+                    {REGION_OPTIONS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  City&nbsp;
+                  <select
+                    value={uploadCity}
+                    onChange={(e) => setUploadCity(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>Select City</option>
+                    {CITY_OPTIONS.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {formError && <p className="form-error">{formError}</p>}
+            </>
+            
           )}
           {file && status !== "uploading" && (
             <button
@@ -265,7 +358,10 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           {status === "success" && <p> File Uploaded Successfully! </p>}
           {status === "error" && <p> File Upload Failed! </p>}
         </div>
+        
 
+      
+        {/** Separate Component */}
         <div className="List">
           <h4> Stored Queries </h4>
           <ul className="List-wrapper">
@@ -358,6 +454,58 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
               : null}
           </ul>
         </div>
+        
+
+        {/** Separate Component */}
+        <div className="Filter">
+          {/* REGION */}
+          <button
+            onClick={() => toggleDropdown("region")}
+            className="Filter-btn"
+          >
+            {selectedRegion ? `Region: ${selectedRegion}` : "Filter Region"}
+          </button>
+          <div className={`Filter-content ${openDropdown === "region" ? "show" : ""}`}>
+            {REGION_OPTIONS.map((r) => (
+              <button
+                key={r}
+                className="Filter-item"
+                onClick={() => {
+                  setSelectedRegion(r);
+                  setOpenDropdown(null);
+                }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+
+          {/* CITY */}
+          <button
+            onClick={() => toggleDropdown("city")}
+            className="Filter-btn"
+          >
+            {selectedCity ? `City: ${selectedCity}` : "Filter City"}
+          </button>
+          <div className={`Filter-content ${openDropdown === "city" ? "show" : ""}`}>
+            {CITY_OPTIONS.map((c) => (
+              <button
+                key={c}
+                className="Filter-item"
+                onClick={() => {
+                  setSelectedCity(c);
+                  setOpenDropdown(null);
+                }}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+
+
+
       </div>
     </>
   );
