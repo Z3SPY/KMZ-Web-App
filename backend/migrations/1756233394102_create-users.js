@@ -12,6 +12,7 @@ export const up = (pgm) => {
   pgm.createTable("FILES", {
     id: { type: "uuid", notNull: true, primaryKey: true },
     name: { type: "text", notNull: true },
+    location: { type: "text", notNull: true },
     uploadedAt: {
       type: "timestamptz",
       notNull: true,

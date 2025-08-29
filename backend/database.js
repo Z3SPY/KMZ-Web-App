@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
+import { getOneLoc } from "./controllers/location.js";
 dotenv.config();
 
 export const PGISPool = new Pool();
@@ -9,10 +10,11 @@ export async function storeToDB(name, layers) {
   const client = await PGISPool.connect();
   try {
     await client.query("BEGIN");
+    const loc = await getOneLoc(layers);
 
     const kmzRes = await client.query(
-      `INSERT INTO "FILES" (id, name) VALUES ($1, $2) RETURNING id`,
-      [uuidv4(), name],
+      `INSERT INTO "FILES" (id, name, location) VALUES ($1, $2, $3) RETURNING id`,
+      [uuidv4(), name, loc],
     );
     const kmzId = kmzRes.rows[0].id;
 

@@ -3,7 +3,6 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import path from "path";
 
-
 const execAsync = promisify(exec);
 
 function gdalPath(p) {
@@ -14,7 +13,6 @@ function gdalPath(p) {
   }
   return p;
 }
-
 export async function kmzToGeoJSON(inputPath, layer) {
   const { data } = await ogr2ogr(gdalPath(inputPath), {
     format: "GeoJSON",

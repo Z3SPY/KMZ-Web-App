@@ -93,6 +93,7 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
           if (!gj || gj.type !== "FeatureCollection") {
             throw new Error(`invalid FC for layer "${layerName}"`);
           }
+
           return {
             name: String(layerName).trim(),
             features: gj.features || [],
