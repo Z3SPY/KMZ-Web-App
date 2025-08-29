@@ -24,8 +24,6 @@ const CITY_OPTIONS = [
   "RIYADH",
 ];
 
-
-
 type KmzFile = {
   id: string;
   name: string;
@@ -49,7 +47,6 @@ function shortenName(name: string, maxLength = 25) {
 }
 
 export default function Floating({ handleGeoJSON }: FloatingProps) {
-
   /* File Data */
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<UploadStatus>("idle");
@@ -67,18 +64,17 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     null,
   );
 
-
   /** Filter Select */
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
 
-  const [openDropdown, setOpenDropdown] = useState<"region" | "city" | null>(null);
-
+  const [openDropdown, setOpenDropdown] = useState<"region" | "city" | null>(
+    null,
+  );
 
   function toggleDropdown(name: "region" | "city") {
     setOpenDropdown((curr) => (curr === name ? null : name));
   }
-  
 
   function toggleOpen(id: string) {
     setOpenLayer((prev) => (prev === id ? null : id)); // only one open
@@ -134,13 +130,12 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       if (!fileExtensionn || !allowedExtensions.includes(fileExtensionn)) {
         alert("Invalid file type! Please upload a .KMZ file");
         setFile(null);
-        setUploadRegion("");   
-        setUploadCity("");    
+        setUploadRegion("");
+        setUploadCity("");
         return;
       }
       setFile(selectedFile);
-      setFormError(null);  
-
+      setFormError(null);
     }
   }
 
@@ -157,10 +152,9 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     if (!file) return;
 
     if (!uploadRegion || !uploadCity) {
-      alert("Fill Country and Region")
+      alert("Fill Country and Region");
       return;
     }
-  
 
     setFormError(null);
     setStatus("uploading");
@@ -171,7 +165,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     formData.append("file", file);
     formData.append("region", uploadRegion);
     formData.append("city", uploadCity);
-  
 
     try {
       const { data } = await axios.post(
@@ -276,7 +269,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   return (
     <>
       <div className="Floating">
-
         {/** Separate Component */}
         <div className="file-wrapper">
           <input
@@ -303,9 +295,13 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
                     onChange={(e) => setUploadRegion(e.target.value)}
                     required
                   >
-                    <option value="" disabled>Select Region</option>
-                    {REGION_OPTIONS.map(r => (
-                      <option key={r} value={r}>{r}</option>
+                    <option value="" disabled>
+                      Select Region
+                    </option>
+                    {REGION_OPTIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -317,9 +313,13 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
                     onChange={(e) => setUploadCity(e.target.value)}
                     required
                   >
-                    <option value="" disabled>Select City</option>
-                    {CITY_OPTIONS.map(c => (
-                      <option key={c} value={c}>{c}</option>
+                    <option value="" disabled>
+                      Select City
+                    </option>
+                    {CITY_OPTIONS.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -327,7 +327,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
               {formError && <p className="form-error">{formError}</p>}
             </>
-            
           )}
           {file && status !== "uploading" && (
             <button
@@ -359,9 +358,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           {status === "success" && <p> File Uploaded Successfully! </p>}
           {status === "error" && <p> File Upload Failed! </p>}
         </div>
-        
 
-      
         {/** Separate Component */}
         <div className="List">
           <h4> Stored Queries </h4>
@@ -459,7 +456,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
               : null}
           </ul>
         </div>
-        
 
         {/** Separate Component */}
         <div className="Filter">
@@ -470,7 +466,9 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           >
             {selectedRegion ? `Region: ${selectedRegion}` : "Filter Region"}
           </button>
-          <div className={`Filter-content ${openDropdown === "region" ? "show" : ""}`}>
+          <div
+            className={`Filter-content ${openDropdown === "region" ? "show" : ""}`}
+          >
             {REGION_OPTIONS.map((r) => (
               <button
                 key={r}
@@ -486,13 +484,12 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           </div>
 
           {/* CITY */}
-          <button
-            onClick={() => toggleDropdown("city")}
-            className="Filter-btn"
-          >
+          <button onClick={() => toggleDropdown("city")} className="Filter-btn">
             {selectedCity ? `City: ${selectedCity}` : "Filter City"}
           </button>
-          <div className={`Filter-content ${openDropdown === "city" ? "show" : ""}`}>
+          <div
+            className={`Filter-content ${openDropdown === "city" ? "show" : ""}`}
+          >
             {CITY_OPTIONS.map((c) => (
               <button
                 key={c}
@@ -507,10 +504,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
             ))}
           </div>
         </div>
-        
-
-
-
       </div>
     </>
   );

@@ -31,6 +31,22 @@ export async function getFileAsLayersAndFeatures(fileId) {
   return result;
 }
 
+export async function getFilesWithLoc() {
+  const client = await PGISPool.connect();
+  try {
+    const filelist = await client.query(
+      `SELECT id, name, region, city, country FROM "FILES"`,
+    );
+    await client.query("COMMIT");
+    return filelist.rows;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function deleteFile(id) {
   const client = await PGISPool.connect();
   try {
