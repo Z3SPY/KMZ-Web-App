@@ -2,6 +2,7 @@ import React, { ChangeEvent, useEffect, useState } from "react";
 import type { FeatureCollection } from "geojson";
 import "./Floating.css";
 import axios from "axios";
+import Filter from "./Filter";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -457,53 +458,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           </ul>
         </div>
 
-        {/** Separate Component */}
-        <div className="Filter">
-          {/* REGION */}
-          <button
-            onClick={() => toggleDropdown("region")}
-            className="Filter-btn"
-          >
-            {selectedRegion ? `Region: ${selectedRegion}` : "Filter Region"}
-          </button>
-          <div
-            className={`Filter-content ${openDropdown === "region" ? "show" : ""}`}
-          >
-            {REGION_OPTIONS.map((r) => (
-              <button
-                key={r}
-                className="Filter-item"
-                onClick={() => {
-                  setSelectedRegion(r);
-                  setOpenDropdown(null);
-                }}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-
-          {/* CITY */}
-          <button onClick={() => toggleDropdown("city")} className="Filter-btn">
-            {selectedCity ? `City: ${selectedCity}` : "Filter City"}
-          </button>
-          <div
-            className={`Filter-content ${openDropdown === "city" ? "show" : ""}`}
-          >
-            {CITY_OPTIONS.map((c) => (
-              <button
-                key={c}
-                className="Filter-item"
-                onClick={() => {
-                  setSelectedCity(c);
-                  setOpenDropdown(null);
-                }}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Filter REGION_OPTIONS={REGION_OPTIONS} CITY_OPTIONS={CITY_OPTIONS} />
       </div>
     </>
   );
