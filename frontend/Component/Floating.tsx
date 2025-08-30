@@ -5,6 +5,7 @@ import axios from "axios";
 import Filter from "./Filter";
 import { List } from "./List";
 
+
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 const REGION_OPTIONS = ["CR", "ER", "WR", "SR"];
@@ -341,7 +342,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           {status === "error" && <p> File Upload Failed! </p>}
         </div>
 
-        {/** Separate Component */}
         <List
           updateMapView={updateMapView}
           getKMZList={getKMZList}
@@ -350,6 +350,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           layerList={layerList}
           openLayer={openLayer}
         />
+
         <Filter REGION_OPTIONS={REGION_OPTIONS} CITY_OPTIONS={CITY_OPTIONS} />
       </div>
     </>
