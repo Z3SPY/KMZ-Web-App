@@ -27,6 +27,9 @@ const CITY_OPTIONS = [
   "RIYADH",
 ];
 
+type Filters = { region: string | null; city: string | null; q: string };
+
+
 type KmzFile = {
   id: string;
   name: string;
@@ -131,6 +134,9 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     }
   }
 
+  //** ========================================= */
+
+
   async function handleFileUpload() {
     if (!file) return;
 
@@ -201,9 +207,11 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     }
   }
 
+  //** ========================================= */
+
   async function getKMZList(): Promise<KmzFile[] | undefined> {
     try {
-      const resp = await axios.get<KmzFile[]>("http://localhost:3000/files");
+      const resp = await axios.get<KmzFile[]>("http://localhost:3000/files/locations");
       setLayerList(resp.data);
       console.log("files:", resp.data);
       return resp.data;
@@ -248,6 +256,26 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     didFetch.current = true;
     getKMZList();
   }, []);
+
+  //** ========================================= */
+
+  const [filters, setFilters] = useState<Filters>({ region: null, city: null, q: "" });
+
+  const filteredLayerList = React.useMemo(() => {
+    const rows = layerList ?? [];
+    return applyFilters(rows, filters);
+  }, [layerList, filters]);
+
+  function applyFilters<T extends { name: string; region?: string|null; city?: string|null }>( data: T[], { region, city, q }: Filters) 
+  {
+    const qnorm = q.trim().toLowerCase();
+    return data.filter((it) => {
+      if (region && it.region !== region) return false;
+      if (city && it.city !== city) return false;
+      if (qnorm && !it.name.toLowerCase().includes(qnorm)) return false;
+      return true;
+    });
+  }
 
   return (
     <>
@@ -347,11 +375,16 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           getKMZList={getKMZList}
           toggleChildCheckbox={toggleChildCheckbox}
           openLayerChildren={openLayerChildren}
-          layerList={layerList}
+          layerList={filteredLayerList}
           openLayer={openLayer}
+          
         />
 
-        <Filter REGION_OPTIONS={REGION_OPTIONS} CITY_OPTIONS={CITY_OPTIONS} />
+        <Filter 
+        REGION_OPTIONS={REGION_OPTIONS} 
+        CITY_OPTIONS={CITY_OPTIONS} 
+        onChange={setFilters}  
+        />
       </div>
     </>
   );

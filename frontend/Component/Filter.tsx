@@ -1,67 +1,73 @@
+import React, { ChangeEvent, useEffect, useMemo } from "react";
 import { useState } from "react";
 
 type FilterProps = {
   REGION_OPTIONS: string[];
   CITY_OPTIONS: string[];
+  onChange?: (f: { region: string | null; city: string | null; q: string }) => void;
 };
 
-export default function Filter({ REGION_OPTIONS, CITY_OPTIONS }: FilterProps) {
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [openDropdown, setOpenDropdown] = useState<"region" | "city" | null>(
-    null,
-  );
+const withAll = (arr: string[], label = "ALL") =>
+  arr.length && arr[0] === label ? arr : [label, ...arr];
 
-  function toggleDropdown(name: "region" | "city") {
-    setOpenDropdown((curr) => (curr === name ? null : name));
-  }
+export default function Filter({ REGION_OPTIONS, CITY_OPTIONS, onChange }: FilterProps) {
+  const [selectedCity, setSelectedCity] = useState<string>("");
+  const [selectedRegion, setSelectedRegion] = useState<string>("");
+  const [q, setQ] = useState<string>("");        
+
+  const [openDropdown, setOpenDropdown] = useState<"region" | "city" | null>(null);
+
+  const regionForFilter = useMemo(() => withAll(REGION_OPTIONS), [REGION_OPTIONS]);
+  const cityForFilter   = useMemo(() => withAll(CITY_OPTIONS),   [CITY_OPTIONS]);
+
+
+  useEffect(() => {
+    onChange?.({
+      region: selectedRegion || null,
+      city: selectedCity || null,
+      q,
+    });
+  }, [selectedRegion, selectedCity, q, onChange]);
+
+  const onQChange = (e: ChangeEvent<HTMLInputElement>) => setQ(e.target.value);
+
   return (
     <>
       <div className="Filter">
         {/* REGION */}
-        <button
-          onClick={() => toggleDropdown?.("region")}
-          className="Filter-btn"
-        >
-          {selectedRegion ? `Region: ${selectedRegion}` : "Filter Region"}
-        </button>
-        <div
-          className={`Filter-content ${openDropdown === "region" ? "show" : ""}`}
-        >
-          {REGION_OPTIONS.map((r) => (
-            <button
-              key={r}
-              className="Filter-item"
-              onClick={() => {
-                setSelectedRegion(r);
-                setOpenDropdown(null);
-              }}
-            >
+        <select
+          value={selectedRegion}
+          onChange={(e) => setSelectedRegion(e.target.value === "ALL" ? "": e.target.value)}
+        > 
+          <option value="" disabled>
+            City
+          </option>
+          {regionForFilter.map((r) => (
+            <option key={r} value={r}>
               {r}
-            </button>
+            </option>
           ))}
-        </div>
+
+        </select>
 
         {/* CITY */}
-        <button onClick={() => toggleDropdown?.("city")} className="Filter-btn">
-          {selectedCity ? `City: ${selectedCity}` : "Filter City"}
-        </button>
-        <div
-          className={`Filter-content ${openDropdown === "city" ? "show" : ""}`}
-        >
-          {CITY_OPTIONS.map((c) => (
-            <button
-              key={c}
-              className="Filter-item"
-              onClick={() => {
-                setSelectedCity(c);
-                setOpenDropdown(null);
-              }}
-            >
-              {c}
-            </button>
+        <select
+          value={selectedCity}
+          onChange={(e) => setSelectedCity(e.target.value === "ALL" ? "": e.target.value)}
+        > 
+          <option value="" disabled>
+            Region
+          </option>
+          {cityForFilter.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
           ))}
-        </div>
+
+        </select>
+
+        <input type="text" id="Search" name="Search" placeholder="Search Name"  value={q} onChange={onQChange} >
+        </input>
       </div>
     </>
   );
