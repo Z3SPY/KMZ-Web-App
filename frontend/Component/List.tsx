@@ -1,6 +1,10 @@
 import axios from "axios";
 import React from "react";
 import { useEffect, useState } from "react";
+import tokml from "geojson-to-kml";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
+import JSZip from "jszip";
+
 
 type KmzFile = {
   id: string;
@@ -20,7 +24,9 @@ type ListProps = {
   openLayerChildren: Children[] | null;
   layerList: KmzFile[] | null;
   openLayer: string | null;
+  exportFC: FeatureCollection;
 };
+
 export const List = ({
   updateMapView,
   getKMZList,
@@ -28,7 +34,27 @@ export const List = ({
   openLayerChildren,
   layerList,
   openLayer,
+  exportFC
 }: ListProps) => {
+  
+
+
+  // Impossible To Keep Styles (View Only)
+  async function downloadKMZ(fc: FeatureCollection, name: string) {
+    const kml = tokml(fc as any, { name: "name", description: "description", simplestyle: true });
+    const zip = new JSZip();
+    zip.file("doc.kml", kml); // KMZ expects 'doc.kml'
+    const kmzBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+  
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([kmzBlob], { type: "application/vnd.google-earth.kmz" }));
+    a.download = `${name}(Copy).kmz`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  
+  
+
   function shortenName(name: string, maxLength = 25) {
     if (name.length <= maxLength) return name;
     const start = name.slice(0, 10); // first part
@@ -44,6 +70,8 @@ export const List = ({
       console.log(error);
     }
   }
+
+  
 
   useEffect(() => {
     getKMZList();
@@ -137,9 +165,18 @@ export const List = ({
                                 );
                               })
                             : null}
+                          
+                          {exportFC && (<button onClick={(e)=>{
+                            e.stopPropagation();
+                            downloadKMZ(exportFC, l.name);}}>
+                              
+                               Download Copy {/** Remove If Bad */}
+
+                          </button>) }
                         </div>
                       )}
                     </li>
+                    
                   </>
                 );
               })
