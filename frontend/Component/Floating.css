@@ -248,65 +248,22 @@ html, body {
 
 /**/ 
 .Filter {
-    padding: 10px 0px;
-}
-
-#Filter-dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.Filter-content {
-    display: none;
-    position: absolute;
-    top: 200px;
-    left: -210px;
-    background-color: #f1f1f1;
-    min-width: 200px;        
-    max-width: 320px;         
-    max-height: 200px;      
-    min-height: 200px;         
-    overflow-y: auto;         
-    box-shadow: 1px 8px 16px rgba(0, 0, 0, 0.411);
-    z-index: 1000;
-    border-radius: 8px;
-    padding: 6px 0;
-  }
-.Filter-content.show {
-    
+    padding: 10px 10px;
+    gap: 5px;
     display: flex;
-    column-gap: 1px;
-    flex-direction: column;
-    max-height: 200px;      
-    min-height: 200px;         
-
 }
 
-.Filter-content button {
-    background-color: transparent;
-    border-bottom: black solid 1px;
-    color: black;
-    border-radius: 0px;
-    
+.Filter select {
+    background-color: #222;
+    border-radius: 15px;
+    font-size: 12px;
+    width: 75px;
 }
 
-.Filter-content button:hover {
-    border-color: black;
-    background-color: #22222238;
-}
-
-.Filter-btn {
+.Filter input {
+    font-size: 12px;
+    width: 7.5rem;
     background-color: #222;
     color: white;
-    padding: 7px;
-    margin-left: 10px;
-    font-size: 16px;
-    border: none;
-    cursor: pointer;
-    font-size: 10px;
+    flex-grow: 1;
 }
-
-.Filter-btn:hover, .Filter-btn:focus {
-    border-color: #222;
-}
-
