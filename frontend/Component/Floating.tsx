@@ -1,5 +1,5 @@
 import React, { ChangeEvent, useEffect, useState } from "react";
-import type { FeatureCollection } from "geojson";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
 import "./Floating.css";
 import axios from "axios";
 import Filter from "./Filter";
@@ -55,6 +55,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   const [uploadRegion, setUploadRegion] = useState<string>("");
   const [uploadCity, setUploadCity] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [exportFC, setExportFC] = useState<FeatureCollection | Feature | Geometry | null>(null);
 
   /** Layer and List */
   const [layerList, setLayerList] = useState<KmzFile[] | null>(null);
@@ -67,38 +68,64 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     null,
   );
 
-  function toggleDropdown(name: "region" | "city") {
-    setOpenDropdown((curr) => (curr === name ? null : name));
-  }
-
-  function toggleOpen(id: string) {
-    setOpenLayer((prev) => (prev === id ? null : id)); // only one open
-  }
-
   //** ========================================= */
   // EXTRA HELPER FOR FILTERING CHILDREN
   const [currentLayers, setCurrentLayers] = useState<any[] | null>(null);
 
-  //filtered FeatureCollection from checked children
-  function buildFC(
-    children: Children[],
-    layersSource?: any[],
-  ): FeatureCollection {
-    const allowed = new Set(
-      children.filter((c) => c.isChecked).map((c) => c.id),
-    );
-    const features = (layersSource ?? currentLayers ?? [])
+  function buildFC(children: Children[]): FeatureCollection {
+    const allowed = new Set(children.filter(c => c.isChecked).map(c => c.id));  
+  
+    const features = (currentLayers ?? [])
       .filter((l: any) => allowed.has(l.id))
       .flatMap((l: any) =>
-        (l.features ?? []).map((f: any) => ({
-          type: "Feature",
-          geometry: f.geom,
-          properties: f.props ?? {},
-          id: f.id,
-        })),
-      );
-    return { type: "FeatureCollection", features } as FeatureCollection;
+        (l.features ?? []).map((f: any) => {
+          const geometry = typeof f.geom === "string" ? JSON.parse(f.geom) : f.geom;
+          if (!geometry || !geometry.type) return null;
+  
+          const baseName =
+            f.props?.name ?? f.name ?? l.name ?? `feature-${f.id ?? ""}`;
+  
+          const simplestyle: Record<string, any> = {};
+          switch (geometry.type) {
+            case "Point":
+            case "MultiPoint":
+              simplestyle["marker-color"] = f.props?.markerColor ?? "#3366FF";
+              simplestyle["marker-size"] = f.props?.markerSize ?? "medium";
+              break;
+            case "LineString":
+            case "MultiLineString":
+              simplestyle["stroke"] = f.props?.stroke ?? "#FF6600";
+              simplestyle["stroke-width"] = f.props?.strokeWidth ?? 7;
+              simplestyle["stroke-opacity"] = f.props?.strokeOpacity ?? 1;
+              break;
+            default: // Polygon/MultiPolygon
+              simplestyle["stroke"] = f.props?.stroke ?? "#333333";
+              simplestyle["stroke-width"] = f.props?.strokeWidth ?? 7;
+              simplestyle["stroke-opacity"] = f.props?.strokeOpacity ?? 1;
+              simplestyle["fill"] = f.props?.fill ?? "#33CC99";
+              simplestyle["fill-opacity"] = f.props?.fillOpacity ?? 0.4;
+          }
+  
+          return {
+            type: "Feature" as const,
+            id: f.id,
+            geometry,
+            properties: {
+              name: baseName,                                  
+              description: f.props?.description ?? "",         
+              ...f.props,                                     
+              ...simplestyle,                                 
+            },
+          };
+        })
+      )
+      .filter(Boolean) as Feature[];
+  
+    const fc: FeatureCollection = { type: "FeatureCollection", features };
+    setExportFC(fc);
+    return fc;
   }
+  
 
   // toggle a child and immediately update the map
   function toggleChildCheckbox(childId: string, checked: boolean) {
@@ -107,7 +134,8 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       const next = prev.map((c) =>
         c.id === childId ? { ...c, isChecked: checked } : c,
       );
-      if (handleGeoJSON) handleGeoJSON(buildFC(next));
+      const fc = buildFC(next); 
+      handleGeoJSON?.(fc);
       return next;
     });
   }
@@ -244,7 +272,9 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
       setOpenLayerChildren(childrenLayer);
 
-      handleGeoJSON?.(buildFC(childrenLayer, layers));
+      const fc = buildFC(childrenLayer);  
+      handleGeoJSON?.(fc);
+
     } catch (e) {
       console.error(e);
     }
@@ -377,7 +407,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           openLayerChildren={openLayerChildren}
           layerList={filteredLayerList}
           openLayer={openLayer}
-          
+          exportFC={exportFC as FeatureCollection}  
         />
 
         <Filter 
