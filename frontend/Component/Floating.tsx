@@ -72,10 +72,10 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   // EXTRA HELPER FOR FILTERING CHILDREN
   const [currentLayers, setCurrentLayers] = useState<any[] | null>(null);
 
-  function buildFC(children: Children[]): FeatureCollection {
+  function buildFC(children: Children[], layersSource?: any[]): FeatureCollection {
     const allowed = new Set(children.filter(c => c.isChecked).map(c => c.id));  
   
-    const features = (currentLayers ?? [])
+    const features = (layersSource ?? currentLayers ?? [])
       .filter((l: any) => allowed.has(l.id))
       .flatMap((l: any) =>
         (l.features ?? []).map((f: any) => {
@@ -272,8 +272,8 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
       setOpenLayerChildren(childrenLayer);
 
-      const fc = buildFC(childrenLayer);  
-      handleGeoJSON?.(fc);
+      const fc = buildFC(childrenLayer, layers); 
+      if (fc) { handleGeoJSON?.(fc); }
 
     } catch (e) {
       console.error(e);
