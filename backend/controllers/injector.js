@@ -23,10 +23,14 @@ function findAndReplace(obj, name, newValue) {
     for (let key in obj) {
       if (key === targetKey) {
         if (obj.name === name) {
-          // console.log(obj.name, ":::::::", name);
           for (let key2 in obj[key]) {
-            for (let coor of obj[key][key2]) {
-              coor.coordinates = 0;
+            console.log(obj[key][key2]);
+            let items = obj[key][key2];
+            if (!Array.isArray(items)) {
+              items = [items];
+            }
+            for (let coor of items) {
+              coor.coordinates = newValue;
             }
           }
         }
@@ -59,8 +63,19 @@ export async function inject(kmlFile, dbData) {
             findAndReplace(kmlData, feature_name, processed);
           }
         } else {
-          for (const coor of features?.geom?.coordinates || []) {
-            const processed = coor.map((c) => c.join(",")).join(" ");
+          for (const coor of features.geom.coordinates || []) {
+            let processed = "";
+            if (features.geom.type === "Point") {
+              processed = features.geom.coordinates.join(",");
+            } else if (features.geom.type === "LineString") {
+              processed = features.geom.coordinates
+                .map((c) => c.join(","))
+                .join(" ");
+            } else if (features.geom.type === "Polygon") {
+              processed = features.geom.coordinates
+                .map((ring) => ring.map((c) => c.join(",")).join(" "))
+                .join(" ");
+            }
             findAndReplace(kmlData, feature_name, processed);
           }
         }
@@ -73,7 +88,7 @@ export async function inject(kmlFile, dbData) {
 }
 export async function test() {
   const dbData = await getFileAsLayersAndFeatures(
-    "810b9514-6282-4bf2-be6a-0a5e07b9223a",
+    "62ad4c2a-829f-485c-bee0-81ea9315f9d9",
   );
   inject("./uploads/ABH-ARIN-FDH-06.kml", dbData);
 }
