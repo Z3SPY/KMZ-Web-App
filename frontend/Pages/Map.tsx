@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as L from "leaflet";
+import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
+import "leaflet-draw/dist/leaflet.draw.css";
 
 import type { Feature, FeatureCollection, LineString, Geometry  } from "geojson";
 
@@ -32,12 +34,24 @@ export default function Map() {
   type LeafletGeoJSON = ReturnType<typeof L.geoJSON>;
   const elRef = useRef(null);
   const mapRef = useRef<any | null>(null);
-  const layerRef = useRef<LeafletGeoJSON | null>(null);
+  
 
-  /* Extracted Features */
-  const [extractedFeatures, setExtractedFeatures] = useState<
-    Feature<LineString, MyProps>[] | null
-  >(null);
+  // Read-only display layer (all features)
+  const displayLayerRef = useRef<L.GeoJSON | null>(null);
+  // Only layers inside this group are editable via the toolbar:
+  const editableGroupRef = useRef<L.FeatureGroup | null>(null);
+
+  const isEditingRef = useRef(false);
+
+  async function saveEditsToOriginalKMZ(updates: any[]) {
+    console.log("Edited features:", updates);
+    // Need an API CAll 
+  }
+
+  function isEditedEvent(evt: L.LeafletEvent): evt is L.DrawEvents.Edited {
+    return !!(evt as any)?.layers?.eachLayer;
+  }
+  
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
@@ -51,18 +65,68 @@ export default function Map() {
       maxBoundsViscosity: 1.0,
       worldCopyJump: true,
     });
+
+
     mapRef.current = map;
 
+
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(map);
+
+
+    const editableGroup = new L.FeatureGroup();
+    editableGroupRef.current = editableGroup;
+    map.addLayer(editableGroup);
+    console.log(editableGroup);
+
+    const drawControl = new L.Control.Draw({
+      draw: {
+        marker: false,
+        circle: false,
+        circlemarker: false,
+        polyline: false,
+        polygon: false,
+        rectangle: false,
+      },                       
+      edit: { featureGroup: editableGroup }
+    });
+    map.addControl(drawControl);
+
+
+    map.on("draw:editstart", () => {
+      isEditingRef.current = true;
+      map.doubleClickZoom.disable(); 
+
+    });
+    map.on("draw:editstop", () => {
+      isEditingRef.current = false;
+      map.doubleClickZoom.enable();
+    });
+
+    map.on("draw:edited", (evt) => {
+      if (!isEditedEvent(evt)) return;            
+    
+      const edited: L.Layer[] = [];
+      evt.layers.eachLayer((lyr: L.Layer) => edited.push(lyr));
+    
+      const updates = edited
+        .map((l: any) => l.toGeoJSON?.())
+        .filter(Boolean);
+    
+      saveEditsToOriginalKMZ(updates);
+    });
 
     return () => {
       map.remove();
       mapRef.current = null;
+      editableGroupRef.current = null;
+      displayLayerRef.current = null;
     };
   }, []);
+
+
 
   function handleGeoJSON(fc: FeatureCollection<LineString, MyProps>) {
     const map = mapRef.current!;
@@ -71,36 +135,56 @@ export default function Map() {
     if (!map || !fc || !Array.isArray(fc.features)) return;
     map.invalidateSize();
 
-    if (layerRef.current) {
-      map.removeLayer(layerRef.current);
-      layerRef.current = null;
+    if (displayLayerRef.current) {
+      map.removeLayer(displayLayerRef.current);
+      displayLayerRef.current = null;
     }
 
     const style = { color: "#ff7800", weight: 4, opacity: 0.8 };
 
-    const layer = L.geoJSON(fc as any, {
-      style: style,
-
-      // Circle Markers
-      pointToLayer: (_feature, latlng) => 
-      L.circleMarker(latlng, { 
-        radius: 6 ,
-        color: style.color,
-        weight: 2,
-        fillOpacity: 0.7
-      }),
-      
-      // Skip Empty Geometries 
+    // Instantiate Map
+    const display = L.geoJSON(fc as any, {
+      style,
+      pointToLayer: (_feature, latlng) =>
+        L.circleMarker(latlng, {
+          radius: 6,
+          color: style.color,
+          weight: 2,
+          fillOpacity: 0.7,
+        }),
       filter: (f) => !!f?.geometry,
-      onEachFeature: (f, lyr) => {
-        const name = f?.properties?.Name ?? f?.properties?.name;
-        if (name) lyr.bindPopup(String(name));
-      },
+      onEachFeature: (_f, lyr: any) => {
+        lyr.on("click", (e: L.LeafletEvent) => {
+          if (isEditingRef.current) return;          
+          const layer = e.target as L.Layer;         
+          const eg = editableGroupRef.current!;
+          const display = displayLayerRef.current!;    
+          console.log(layer);
+          if (eg.hasLayer(layer)) {
+            eg.removeLayer(layer);
+            display.addLayer(layer); 
+            if (!display.hasLayer(layer)) display.addLayer(layer);
+            (layer as any).setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 });
+          } else {
+
+            display.removeLayer(layer); 
+            eg.addLayer(layer);     
+            console.log(layer);
+                  
+            (layer as any).setStyle?.({ color: "#1e90ff", weight: 4, opacity: 0.9 });
+            (layer as any).bringToFront?.();
+          }
+        });
+
+      }
     }).addTo(map);
 
-    layerRef.current = layer;
+    displayLayerRef.current = display;  
 
-    const bounds = layer.getBounds();
+
+
+    // Map Re View 
+    const bounds = display.getBounds();
     if (bounds.isValid()) {
       map.flyToBounds(bounds, {
         padding: [20, 20],

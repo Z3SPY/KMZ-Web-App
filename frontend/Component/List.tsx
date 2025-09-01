@@ -97,7 +97,7 @@ export const List = ({
                         updateMapView(l.id)
                       }
                     >
-                      <div className="List-data">
+                      <div className="List-data" >
                         <p>
                           <span
                             className={`caret ${isOpen ? "down" : ""}`}
@@ -136,7 +136,7 @@ export const List = ({
                             ? openLayerChildren.map((child) => {
                                 return (
                                   <>
-                                    <div className="Content">
+                                    <div className="Content" id={`Content-${child.id}`}>
                                       <input
                                         type="checkbox"
                                         id={`child-${child.id}`}
