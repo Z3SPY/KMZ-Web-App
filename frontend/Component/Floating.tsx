@@ -163,7 +163,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   }
 
   //** ========================================= */
-
+  // UPLAOD
 
   async function handleFileUpload() {
     if (!file) return;
@@ -231,7 +231,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       setStatus("error");
       setUploadProgress(0);
       setUploadButtonStatus(false);
-      setFile(null);
+      setFile(null) 
     }
   }
 

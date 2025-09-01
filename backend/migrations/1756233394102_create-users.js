@@ -9,6 +9,8 @@
  */
 import { PgLiteral } from "node-pg-migrate";
 export const up = (pgm) => {
+
+  /** FILE TABLE  */
   pgm.createTable("FILES", {
     id: { type: "uuid", notNull: true, primaryKey: true },
     name: { type: "text", notNull: true },
@@ -22,6 +24,8 @@ export const up = (pgm) => {
       default: new PgLiteral("current_timestamp"),
     },
   });
+
+  /** LAYERS TABLE  */
   pgm.createTable("LAYERS", {
     id: { type: "uuid", notNull: true, primaryKey: true },
     name: { type: "text", notNull: true },
@@ -39,6 +43,8 @@ export const up = (pgm) => {
       default: new PgLiteral("current_timestamp"),
     },
   });
+
+  /** FEATURES TABLE  */
   pgm.sql(`
     CREATE TABLE "FEATURES" (
       "id" uuid PRIMARY KEY,
@@ -48,6 +54,9 @@ export const up = (pgm) => {
       "updated_at" timestamptz DEFAULT current_timestamp NOT NULL
     );
   `);
+
+
+  /** UPLOAD (On stand by? dunno if its being used?) */
   pgm.createTable("UPLOADS", {
     id: { type: "uuid", primaryKey: true },
     layer_id: {
@@ -73,6 +82,17 @@ export const up = (pgm) => {
       notNull: false,
     },
   });
+
+  pgm.createTable("KMZ_INFO", {
+    id: {type: "uuid", primaryKey: true, notNull: true},
+    file_id: { type: "uuid", notNull: true, references: "FILES", /** // For Version Control */
+    onDelete: "CASCADE", onUpdate: "CASCADE" /**DELETE Corresponding FIles */},  
+    data: {type: "bytea", notNull: true}, // KMZ Files Here
+    size_bytes: {type: "bigint", notNull: true},
+    sha256: {type: "text", notNull: true, unique: true},
+    content_type: { type: "text", notNull: true, default: "application/vnd.google-earth.kmz" },
+    uploaded_at:  { type: "timestamptz", notNull: true, default: pgm.func("current_timestamp") },
+  });
 };
 
 /**
@@ -85,4 +105,6 @@ export const down = (pgm) => {
   pgm.dropTable("LAYERS", { ifExists: true, cascade: true });
   pgm.dropTable("FEATURES", { ifExists: true, cascade: true });
   pgm.dropTable("UPLOADS", { ifExists: true, cascade: true });
+  pgm.dropTable("KMZ_INFO", { ifExists: true, cascade: true });
+
 };

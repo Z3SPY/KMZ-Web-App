@@ -53,6 +53,9 @@ const upload = multer({
   },
 });
 
+
+/** HANDLE UPLOAD  */
+
 uploadRoutes.post("/", upload.single("file"), async (req, res) => {
   // WE NEED TO CHECK IF ALREADY EXISTS THEN RETURN ERROR IF IT ALREADY DOES?
   // IDK how to ACCOMODATE FOR CHANGES
@@ -83,6 +86,7 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
     });
 
     let layers = [];
+
     try {
       layers = await listAllLayers(filePath);
       if (!Array.isArray(layers))
@@ -108,17 +112,18 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
           };
         } catch (err) {
           console.error(`Layer convert failed (${layerName}):`, err);
-          return [];
+          return { name: String(layerName).trim(), features: [] };
         }
       }),
     );
 
-    const features = featuresArrays.flat();
+    const features = featuresArrays.flatMap(x => x?.features ?? []);
     const featureCollection = { type: "FeatureCollection", features };
 
     // DB store
     try {
-      await storeToDB(req.file.originalname, featuresArrays, region, city);
+      await storeToDB(filePath, req.file.originalname, featuresArrays, region, city, 
+        { sizeBytes: req.file.size, contentType: req.file.mimetype });
     } catch (e) {
       console.warn("storeToDB failed (continuing):", e);
       return res.status(500).json({
@@ -126,11 +131,13 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
         error: "Database error",
       });
     }
+
     return res.status(200).json({
       ok: true,
       features: features.length,
       geojson: featureCollection,
     });
+
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("UPLOAD ERROR:", msg, e);
@@ -138,6 +145,8 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
   } finally {
     try {
       if (req.file?.path) await fs.unlink(req.file.path);
+      //Handles Throw
+      console.log("Finally Upload.js");
     } catch (e) {
       console.warn("cleanup failed:", e);
     }
