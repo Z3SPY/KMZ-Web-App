@@ -5,7 +5,6 @@ import axios from "axios";
 import Filter from "./Filter";
 import { List } from "./List";
 
-
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 const REGION_OPTIONS = ["CR", "ER", "WR", "SR"];
@@ -28,7 +27,6 @@ const CITY_OPTIONS = [
 ];
 
 type Filters = { region: string | null; city: string | null; q: string };
-
 
 type KmzFile = {
   id: string;
@@ -55,7 +53,9 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   const [uploadRegion, setUploadRegion] = useState<string>("");
   const [uploadCity, setUploadCity] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [exportFC, setExportFC] = useState<FeatureCollection | Feature | Geometry | null>(null);
+  const [exportFC, setExportFC] = useState<
+    FeatureCollection | Feature | Geometry | null
+  >(null);
 
   /** Layer and List */
   const [layerList, setLayerList] = useState<KmzFile[] | null>(null);
@@ -72,19 +72,25 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   // EXTRA HELPER FOR FILTERING CHILDREN
   const [currentLayers, setCurrentLayers] = useState<any[] | null>(null);
 
-  function buildFC(children: Children[], layersSource?: any[]): FeatureCollection {
-    const allowed = new Set(children.filter(c => c.isChecked).map(c => c.id));  
-  
+  function buildFC(
+    children: Children[],
+    layersSource?: any[],
+  ): FeatureCollection {
+    const allowed = new Set(
+      children.filter((c) => c.isChecked).map((c) => c.id),
+    );
+
     const features = (layersSource ?? currentLayers ?? [])
       .filter((l: any) => allowed.has(l.id))
       .flatMap((l: any) =>
         (l.features ?? []).map((f: any) => {
-          const geometry = typeof f.geom === "string" ? JSON.parse(f.geom) : f.geom;
+          const geometry =
+            typeof f.geom === "string" ? JSON.parse(f.geom) : f.geom;
           if (!geometry || !geometry.type) return null;
-  
+
           const baseName =
             f.props?.name ?? f.name ?? l.name ?? `feature-${f.id ?? ""}`;
-  
+
           const simplestyle: Record<string, any> = {};
           switch (geometry.type) {
             case "Point":
@@ -105,27 +111,26 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
               simplestyle["fill"] = f.props?.fill ?? "#33CC99";
               simplestyle["fill-opacity"] = f.props?.fillOpacity ?? 0.4;
           }
-  
+
           return {
             type: "Feature" as const,
             id: f.id,
             geometry,
             properties: {
-              name: baseName,                                  
-              description: f.props?.description ?? "",         
-              ...f.props,                                     
-              ...simplestyle,                                 
+              name: baseName,
+              description: f.props?.description ?? "",
+              ...f.props,
+              ...simplestyle,
             },
           };
-        })
+        }),
       )
       .filter(Boolean) as Feature[];
-  
+
     const fc: FeatureCollection = { type: "FeatureCollection", features };
     setExportFC(fc);
     return fc;
   }
-  
 
   // toggle a child and immediately update the map
   function toggleChildCheckbox(childId: string, checked: boolean) {
@@ -134,7 +139,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       const next = prev.map((c) =>
         c.id === childId ? { ...c, isChecked: checked } : c,
       );
-      const fc = buildFC(next); 
+      const fc = buildFC(next);
       handleGeoJSON?.(fc);
       return next;
     });
@@ -163,7 +168,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   }
 
   //** ========================================= */
-
 
   async function handleFileUpload() {
     if (!file) return;
@@ -239,7 +243,9 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
   async function getKMZList(): Promise<KmzFile[] | undefined> {
     try {
-      const resp = await axios.get<KmzFile[]>("http://localhost:3000/files/locations");
+      const resp = await axios.get<KmzFile[]>(
+        "http://localhost:3000/files/locations",
+      );
       setLayerList(resp.data);
       console.log("files:", resp.data);
       return resp.data;
@@ -272,9 +278,10 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
       setOpenLayerChildren(childrenLayer);
 
-      const fc = buildFC(childrenLayer, layers); 
-      if (fc) { handleGeoJSON?.(fc); }
-
+      const fc = buildFC(childrenLayer, layers);
+      if (fc) {
+        handleGeoJSON?.(fc);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -289,15 +296,20 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
   //** ========================================= */
 
-  const [filters, setFilters] = useState<Filters>({ region: null, city: null, q: "" });
+  const [filters, setFilters] = useState<Filters>({
+    region: null,
+    city: null,
+    q: "",
+  });
 
   const filteredLayerList = React.useMemo(() => {
     const rows = layerList ?? [];
     return applyFilters(rows, filters);
   }, [layerList, filters]);
 
-  function applyFilters<T extends { name: string; region?: string|null; city?: string|null }>( data: T[], { region, city, q }: Filters) 
-  {
+  function applyFilters<
+    T extends { name: string; region?: string | null; city?: string | null },
+  >(data: T[], { region, city, q }: Filters) {
     const qnorm = q.trim().toLowerCase();
     return data.filter((it) => {
       if (region && it.region !== region) return false;
@@ -407,13 +419,13 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           openLayerChildren={openLayerChildren}
           layerList={filteredLayerList}
           openLayer={openLayer}
-          exportFC={exportFC as FeatureCollection}  
+          exportFC={exportFC as FeatureCollection}
         />
 
-        <Filter 
-        REGION_OPTIONS={REGION_OPTIONS} 
-        CITY_OPTIONS={CITY_OPTIONS} 
-        onChange={setFilters}  
+        <Filter
+          REGION_OPTIONS={REGION_OPTIONS}
+          CITY_OPTIONS={CITY_OPTIONS}
+          onChange={setFilters}
         />
       </div>
     </>

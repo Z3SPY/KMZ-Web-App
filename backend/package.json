@@ -21,6 +21,7 @@
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
+    "fast-xml-parser": "^5.2.5",
     "gdal-async": "^3.11.3",
     "multer": "^2.0.2",
     "ogr2ogr": "^6.0.1",
