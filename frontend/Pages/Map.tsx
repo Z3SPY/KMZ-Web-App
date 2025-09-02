@@ -55,8 +55,18 @@ export default function Map() {
   //** HELPERS  */
   async function saveEditsToOriginalKMZ(updates: any[]) {
     console.log("Edited features:", updates);
-    // Need an API CAll 
+  
+    try {
+      await fetch("http://localhost:3000/features/saveEdit", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates }),
+      });
+    } catch (err) {
+      console.error("Failed to save edits:", err);
+    }
   }
+  
 
   function isEditedEvent(evt: L.LeafletEvent): evt is L.DrawEvents.Edited {
     return !!(evt as any)?.layers?.eachLayer;
@@ -125,7 +135,9 @@ export default function Map() {
       const updates = edited
         .map((l: any) => l.toGeoJSON?.())
         .filter(Boolean);
-    
+      
+      console.log(updates);
+
       saveEditsToOriginalKMZ(updates);
     });
 
