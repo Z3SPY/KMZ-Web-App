@@ -6,7 +6,6 @@ import { featureRoutes } from "./routes/features.js";
 import { testRoutes } from "./routes/store.js";
 import { filesRoutes } from "./routes/files.js";
 import { uploadRoutes } from "./routes/upload.js";
-import { injRoutes } from "./routes/injector.js";
 import { downloadRoutes } from "./routes/download.js";
 
 // Fix in prod
@@ -40,7 +39,6 @@ app.use("/layers", layerRoutes);
 app.use("/features", featureRoutes);
 app.use("/test", testRoutes);
 app.use("/upload", uploadRoutes);
-app.use("/injector", injRoutes);
 app.use("/download", downloadRoutes);
 
 app.listen(port, () => {
