@@ -1,4 +1,6 @@
 import { PGISPool } from "../database.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 export async function getLayers(fileId) {
   const client = await PGISPool.connect();
