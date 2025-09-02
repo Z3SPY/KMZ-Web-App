@@ -10,6 +10,8 @@
 import { PgLiteral } from "node-pg-migrate";
 export const up = (pgm) => {
 
+  pgm.sql(`CREATE EXTENSION IF NOT EXISTS postgis;`);
+
   /** FILE TABLE  */
   pgm.createTable("FILES", {
     id: { type: "uuid", notNull: true, primaryKey: true },
