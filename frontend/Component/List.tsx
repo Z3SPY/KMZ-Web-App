@@ -1,9 +1,6 @@
 import axios from "axios";
-import React from "react";
-import { useEffect, useState } from "react";
-import tokml from "geojson-to-kml";
-import type { Feature, FeatureCollection, Geometry } from "geojson";
-import JSZip from "jszip";
+import { useEffect } from "react";
+import type { FeatureCollection } from "geojson";
 
 type KmzFile = {
   id: string;
@@ -48,8 +45,6 @@ export const List = ({
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-
-      const contentDisposition = response.headers["content-disposition"];
 
       link.setAttribute("download", `${fileName}`);
       document.body.appendChild(link);

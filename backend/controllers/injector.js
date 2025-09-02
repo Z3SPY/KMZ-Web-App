@@ -1,6 +1,5 @@
-import { XMLParser, XMLBuilder, XMLValidator } from "fast-xml-parser";
+import { XMLParser, XMLBuilder } from "fast-xml-parser";
 import fs from "fs";
-import { getFileAsLayersAndFeatures } from "./files.js";
 import path from "path";
 import yazl from "yazl";
 
