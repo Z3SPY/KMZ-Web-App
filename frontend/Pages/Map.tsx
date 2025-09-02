@@ -17,6 +17,8 @@ type MyProps = {
   visibility: number;
 };
 
+
+
 async function ExtractAllKMZFeatures() {
   return axios
     .get(`http://localhost:3000/list`)
@@ -41,8 +43,16 @@ export default function Map() {
   // Only layers inside this group are editable via the toolbar:
   const editableGroupRef = useRef<L.FeatureGroup | null>(null);
 
-  const isEditingRef = useRef(false);
+  const [popUpState, setPopUpState] = useState<boolean>(false);
+  const popupRef = useRef<L.Popup | null>(null);
 
+
+  const isEditingRef = useRef(false);
+  const lastHighlightedRef = useRef<L.Layer | null>(null);
+
+
+
+  //** HELPERS  */
   async function saveEditsToOriginalKMZ(updates: any[]) {
     console.log("Edited features:", updates);
     // Need an API CAll 
@@ -52,6 +62,7 @@ export default function Map() {
     return !!(evt as any)?.layers?.eachLayer;
   }
   
+  /** ================================ */
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
@@ -98,7 +109,7 @@ export default function Map() {
     map.on("draw:editstart", () => {
       isEditingRef.current = true;
       map.doubleClickZoom.disable(); 
-
+      map.closePopup();
     });
     map.on("draw:editstop", () => {
       isEditingRef.current = false;
@@ -118,11 +129,34 @@ export default function Map() {
       saveEditsToOriginalKMZ(updates);
     });
 
+    map.on("popupclose", () => {
+      const lyr = lastHighlightedRef.current;
+      if (!lyr) return;
+    
+      const eg = editableGroupRef.current!;
+      if (!eg.hasLayer(lyr)) {
+        (lyr as any).setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 });
+      }
+    
+      lastHighlightedRef.current = null;
+      setPopUpState(false);
+    });
+
+    popupRef.current = L.popup({
+      closeButton: false,
+      autoPan: true,
+      className: "choice-popup", // optional for custom styling
+    });
+
+    map.on("click", () => map.closePopup());
+
+
     return () => {
       map.remove();
       mapRef.current = null;
       editableGroupRef.current = null;
       displayLayerRef.current = null;
+      popupRef.current = null; 
     };
   }, []);
 
@@ -154,29 +188,91 @@ export default function Map() {
         }),
       filter: (f) => !!f?.geometry,
       onEachFeature: (_f, lyr: any) => {
-        lyr.on("click", (e: L.LeafletEvent) => {
-          if (isEditingRef.current) return;          
-          const layer = e.target as L.Layer;         
+        lyr.on("click", (e: L.LeafletMouseEvent) => {
+          L.DomEvent.stop(e);
+          e.originalEvent?.stopPropagation?.();
+
+          if (isEditingRef.current) return;
+          const layer = e.target as L.Layer;
           const eg = editableGroupRef.current!;
-          const display = displayLayerRef.current!;    
+          const display = displayLayerRef.current!;
+          const map = mapRef.current!;
+          const popup = (popupRef.current ??= L.popup({
+            closeButton: false,
+            autoPan: true,
+            className: "choice-popup",
+            offset: L.point(0, -8),
+          }));
+      
           console.log(layer);
+          console.log(popUpState);
+      
+
+
           if (eg.hasLayer(layer)) {
             eg.removeLayer(layer);
-            display.addLayer(layer); 
+            display.addLayer(layer);
             if (!display.hasLayer(layer)) display.addLayer(layer);
             (layer as any).setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 });
           } else {
+            setPopUpState(prev => {
+              const next = !prev; // flip
+              if (next) {
+                (layer as any).setStyle?.({ color: "#AE75DA", weight: 6, opacity: 0.9 });
+                (layer as any).bringToFront?.();
+                lastHighlightedRef.current = layer; 
+              } else {
+                (layer as any).setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 });
+              }
 
-            display.removeLayer(layer); 
-            eg.addLayer(layer);     
-            console.log(layer);
-                  
-            (layer as any).setStyle?.({ color: "#1e90ff", weight: 4, opacity: 0.9 });
-            (layer as any).bringToFront?.();
+              return next;
+            });
+      
+
+            // ================================
+            // PopUp
+            // ================================
+
+            const html = `
+              <div class="Popup-Choice" > 
+                <button id="pp-add" style="padding:.35rem .6rem;">Add Geometry</button>
+                <button id="pp-edit" style="padding:.35rem .6rem;">Add To Edit</button>
+              </div>
+            `;
+
+            popup.setLatLng(e.latlng).setContent(html).openOn(map);
+
+
+            // ===============================
+            // EVENM LISTENERS 
+            // ================================
+            layer.on("popupopen", () => {
+              (layer as any).setStyle?.({ color: "#AE75DA", weight: 4, opacity: 0.8 });
+            });
+          
+            layer.on("popupclose", () => {
+              (layer as any).setStyle?.({ color: "#ff7800", weight: 6, opacity: 0.9 });
+            });
+      
+            setTimeout(() => {
+              document.getElementById("pp-add")?.addEventListener("click", () => {
+                map.closePopup()
+                console.log("Add Geometry clicked");
+              }, {once: true});
+              document.getElementById("pp-edit")?.addEventListener("click", () => {
+                map.closePopup()
+                display.removeLayer(layer); 
+                eg.addLayer(layer); 
+                console.log(layer);
+                (layer as any).setStyle?.({ color: "#1e90ff", weight: 4, opacity: 0.8 });
+                console.log("Edit clicked");
+              }, {once: true});
+            }, 0);
           }
         });
-
       }
+
+      
     }).addTo(map);
 
     displayLayerRef.current = display;  
