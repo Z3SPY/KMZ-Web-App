@@ -9,7 +9,14 @@ dotenv.config();
 
 export const PGISPool = new Pool();
 
-export async function storeToDB(kmzpath, name, layers, region, city, meta={}) {
+export async function storeToDB(
+  kmzpath,
+  name,
+  layers,
+  region,
+  city,
+  meta = {},
+) {
   const client = await PGISPool.connect();
   try {
     await client.query("BEGIN");
@@ -17,19 +24,25 @@ export async function storeToDB(kmzpath, name, layers, region, city, meta={}) {
     let loc = null;
     try {
       loc = await getOneLoc(layers);
-    } catch{}
+    } catch {}
 
-    // Create Files Row 
+    // Create Files Row
     const kmzRes = await client.query(
       `INSERT INTO "FILES" (id, name, region, city, postcode, country) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [uuidv4(), name, region, city, loc?.postcode ?? null, loc?.country ?? 'UNKNOWN'],
+      [
+        uuidv4(),
+        name,
+        region,
+        city,
+        loc?.postcode ?? null,
+        loc?.country ?? "UNKNOWN",
+      ],
     );
     const kmzId = kmzRes.rows[0].id;
 
-
     const kmzBytes = await fs.readFile(kmzpath);
     const sizeBytes = meta.sizeBytes ?? kmzBytes.length;
-    const contentType = meta.contentType ?? "application/vnd.google-earth.kmz";    
+    const contentType = meta.contentType ?? "application/vnd.google-earth.kmz";
     const sha256 = crypto.createHash("sha256").update(kmzBytes).digest("hex");
 
     try {
@@ -37,13 +50,11 @@ export async function storeToDB(kmzpath, name, layers, region, city, meta={}) {
       await client.query(
         `INSERT INTO "KMZ_INFO"(id, file_id, data, size_bytes, sha256, content_type)
          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)`,
-        [kmzId, kmzBytes, sizeBytes, sha256, contentType]
+        [kmzId, kmzBytes, sizeBytes, sha256, contentType],
       );
-    } catch(e) {
+    } catch (e) {
       console.log(e);
     }
-    
-
 
     for (const layer of layers) {
       if (!layer || layer.length === 0) continue;

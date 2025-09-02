@@ -53,7 +53,6 @@ const upload = multer({
   },
 });
 
-
 /** HANDLE UPLOAD  */
 
 uploadRoutes.post("/", upload.single("file"), async (req, res) => {
@@ -117,13 +116,19 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
       }),
     );
 
-    const features = featuresArrays.flatMap(x => x?.features ?? []);
+    const features = featuresArrays.flatMap((x) => x?.features ?? []);
     const featureCollection = { type: "FeatureCollection", features };
 
     // DB store
     try {
-      await storeToDB(filePath, req.file.originalname, featuresArrays, region, city, 
-        { sizeBytes: req.file.size, contentType: req.file.mimetype });
+      await storeToDB(
+        filePath,
+        req.file.originalname,
+        featuresArrays,
+        region,
+        city,
+        { sizeBytes: req.file.size, contentType: req.file.mimetype },
+      );
     } catch (e) {
       console.warn("storeToDB failed (continuing):", e);
       return res.status(500).json({
@@ -137,7 +142,6 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
       features: features.length,
       geojson: featureCollection,
     });
-
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("UPLOAD ERROR:", msg, e);
