@@ -24,11 +24,10 @@ downloadRoutes.get("/:id", async (req, res) => {
   inject(kmlFile, dbData, id);
   const filePath = path.join(__dirname, "..", "temp", `${id}.kmz`);
   // res.send("Hello");
-  res.setHeader("Content-Disposition", "attachment; file.kml");
   res.sendFile(filePath, (err) => {
     if (err) {
       console.error("Error sending file:", err);
-      res.status(500).send("Could not send KML file");
+      res.status(500).send("Could not send KMZ file");
     }
   });
 });

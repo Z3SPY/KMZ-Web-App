@@ -15,11 +15,11 @@ import yazl from "yazl";
 // const parser = new XMLParser(options);
 // const kmlData = parser.parse(kmlContent);
 
-function findAndReplace(obj, name, newValue) {
+function findAndReplace(obj, name, newValue, counter) {
   const targetKey = "MultiGeometry";
   if (Array.isArray(obj)) {
     for (let i = 0; i < obj.length; i++) {
-      findAndReplace(obj[i], name, newValue);
+      findAndReplace(obj[i], name, newValue, counter);
     }
   } else if (obj !== null && typeof obj === "object") {
     for (let key in obj) {
@@ -31,13 +31,11 @@ function findAndReplace(obj, name, newValue) {
             if (!Array.isArray(items)) {
               items = [items];
             }
-            for (let coor of items) {
-              coor.coordinates = newValue;
-            }
+            items[counter].coordinates = newValue;
           }
         }
       } else {
-        findAndReplace(obj[key], name, newValue);
+        findAndReplace(obj[key], name, newValue, counter);
       }
     }
   }
@@ -77,15 +75,18 @@ export async function inject(kmlFile, dbData, id) {
       for (const features of layer.features) {
         const feature_name = features.props.Name;
         if (features.geom.geometries) {
+          let counter = 0;
           for (const geom of features.geom.geometries) {
             const c = [];
             for (const coor of geom.coordinates || []) {
               c.push(coor.join(","));
             }
             const processed = c.join(" ");
-            findAndReplace(kmlData, feature_name, processed);
+            findAndReplace(kmlData, feature_name, processed, counter);
+            counter++;
           }
         } else {
+          let counter = 0;
           for (const coor of features.geom.coordinates || []) {
             let processed = "";
             if (features.geom.type === "Point") {
@@ -101,7 +102,8 @@ export async function inject(kmlFile, dbData, id) {
             } else if (features.geom.type === "MultiLineString") {
               processed = coor.map((c) => c.join(",")).join(" ");
             }
-            findAndReplace(kmlData, feature_name, processed);
+            findAndReplace(kmlData, feature_name, processed, counter);
+            counter++;
           }
         }
       }
@@ -118,7 +120,7 @@ export async function inject(kmlFile, dbData, id) {
   const kmz = createKMZ(kml, filePath)
     .then((file) => console.log("KMZ created at:", file))
     .catch(console.error);
-  fs.writeFileSync("kml.kml", kml, "utf-8");
+  // fs.writeFileSync(`${id}.kml`, kml, "utf-8");
 }
 
 export async function test() {
