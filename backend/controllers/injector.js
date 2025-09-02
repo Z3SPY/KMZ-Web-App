@@ -1,19 +1,8 @@
 import { XMLParser, XMLBuilder, XMLValidator } from "fast-xml-parser";
 import fs from "fs";
 import { getFileAsLayersAndFeatures } from "./files.js";
-import { features } from "process";
 import path from "path";
 import yazl from "yazl";
-
-// const kmlFile = "./uploads/ABH-ARIN-FDH-06.kml";
-// const awsFile = "./uploads/aws.kml";
-// const kmlContent = fs.readFileSync(kmlFile, "utf-8");
-
-// const options = {
-//   ignoreAttributes: false,
-// };
-// const parser = new XMLParser(options);
-// const kmlData = parser.parse(kmlContent);
 
 function findAndReplace(obj, name, newValue, counter) {
   const targetKey = "MultiGeometry";
@@ -26,7 +15,6 @@ function findAndReplace(obj, name, newValue, counter) {
       if (key === targetKey) {
         if (obj.name === name) {
           for (let key2 in obj[key]) {
-            // console.log(obj[key][key2]);
             let items = obj[key][key2];
             if (!Array.isArray(items)) {
               items = [items];
@@ -54,16 +42,16 @@ function createKMZ(kml, outPath, filename = "doc.kml") {
     const outStream = fs.createWriteStream(outPath);
     zipfile.outputStream.pipe(outStream);
 
-    outStream.on("close", () => resolve(outPath));
+    outStream.on("finish", () => {
+      console.log("FINISHED");
+      resolve(outPath);
+    });
     outStream.on("error", reject);
-
     zipfile.end();
   });
 }
 
 export async function inject(kmlFile, dbData, id) {
-  // const kmlContent = fs.readFileSync(kmlFile, "utf-8");
-
   const options = {
     ignoreAttributes: false,
   };
@@ -117,15 +105,7 @@ export async function inject(kmlFile, dbData, id) {
     fs.mkdirSync(folder, { recursive: true });
   }
 
-  const kmz = createKMZ(kml, filePath)
-    .then((file) => console.log("KMZ created at:", file))
+  await createKMZ(kml, filePath)
+    .then((file) => console.log("KMZ created"))
     .catch(console.error);
-  // fs.writeFileSync(`${id}.kml`, kml, "utf-8");
-}
-
-export async function test() {
-  const dbData = await getFileAsLayersAndFeatures(
-    "62ad4c2a-829f-485c-bee0-81ea9315f9d9",
-  );
-  inject("./uploads/ABH-ARIN-FDH-06.kml", dbData);
 }

@@ -36,26 +36,49 @@ export const List = ({
   exportFC,
 }: ListProps) => {
   // Impossible To Keep Styles (View Only)
-  async function downloadKMZ(fc: FeatureCollection, name: string) {
-    const kml = tokml(fc as any, {
-      name: "name",
-      description: "description",
-      simplestyle: true,
-    });
-    const zip = new JSZip();
-    zip.file("doc.kml", kml); // KMZ expects 'doc.kml'
-    const kmzBlob = await zip.generateAsync({
-      type: "blob",
-      compression: "DEFLATE",
-    });
+  async function downloadKMZ(fileId: string, fileName: string) {
+    try {
+      const response = await axios.get(
+        `http://localhost:3000/download/${fileId}`,
+        {
+          responseType: "blob",
+        },
+      );
 
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(
-      new Blob([kmzBlob], { type: "application/vnd.google-earth.kmz" }),
-    );
-    a.download = `${name}(Copy).kmz`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+
+      const contentDisposition = response.headers["content-disposition"];
+
+      link.setAttribute("download", `${fileName}`);
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+    }
+    // const kml = tokml(fc as any, {
+    //   name: "name",
+    //   description: "description",
+    //   simplestyle: true,
+    // });
+    // const zip = new JSZip();
+    // zip.file("doc.kml", kml); // KMZ expects 'doc.kml'
+    // const kmzBlob = await zip.generateAsync({
+    //   type: "blob",
+    //   compression: "DEFLATE",
+    // });
+    //
+    // const a = document.createElement("a");
+    // a.href = URL.createObjectURL(
+    //   new Blob([kmzBlob], { type: "application/vnd.google-earth.kmz" }),
+    // );
+    // a.download = `${name}(Copy).kmz`;
+    // a.click();
+    // URL.revokeObjectURL(a.href);
   }
 
   function shortenName(name: string, maxLength = 25) {
@@ -174,7 +197,7 @@ export const List = ({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                downloadKMZ(exportFC, l.name);
+                                downloadKMZ(l.id, l.name);
                               }}
                             >
                               Download Copy {/** Remove If Bad */}

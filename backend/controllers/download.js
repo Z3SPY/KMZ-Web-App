@@ -1,4 +1,11 @@
 import { PGISPool } from "../database.js";
+import path from "path";
+import yauzl from "yauzl";
+import { getFileAsLayersAndFeatures } from "./files.js";
+import { inject } from "../controllers/injector.js";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function getFileData(fileId) {
   const client = await PGISPool.connect();
@@ -18,4 +25,45 @@ export async function getFileData(fileId) {
   } finally {
     client.release();
   }
+}
+
+export async function getFileToDownload(id) {
+  const kmzFile = await getFileData(id);
+  const dbData = await getFileAsLayersAndFeatures(id);
+  const kmlFile = await extractKMLFromKMZ(kmzFile)
+    .then((kml) => {
+      return kml;
+    })
+    .catch(console.error);
+  console.log("kml extracted");
+  await inject(kmlFile, dbData, id);
+  const filePath = path.join(__dirname, "..", "temp", `${id}.kmz`);
+  return filePath;
+}
+
+function extractKMLFromKMZ(buffer) {
+  return new Promise((resolve, reject) => {
+    yauzl.fromBuffer(buffer, { lazyEntries: true }, (err, zipfile) => {
+      if (err) return reject(err);
+      zipfile.readEntry();
+      zipfile.on("entry", (entry) => {
+        if (/\.kml$/i.test(entry.fileName)) {
+          zipfile.openReadStream(entry, (err, readStream) => {
+            if (err) return reject(err);
+            let chunks = [];
+            readStream.on("data", (chunk) => chunks.push(chunk));
+            readStream.on("end", () => {
+              resolve(Buffer.concat(chunks).toString("utf8"));
+              zipfile.close();
+            });
+          });
+        } else {
+          zipfile.readEntry();
+        }
+      });
+      zipfile.on("end", () =>
+        reject(new Error("No KML file found inside KMZ")),
+      );
+    });
+  });
 }
