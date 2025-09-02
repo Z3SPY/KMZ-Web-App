@@ -1,10 +1,10 @@
 import { PGISPool } from "../database.js";
 
-/** 
-* @param {string[]} ids - Array of feature UUIDs
-* @param {object} fields - Fields to update (layer_id, props, etc.)
-* @returns {Promise<number>} Number of updated rows
-*/
+/**
+ * @param {string[]} ids - Array of feature UUIDs
+ * @param {object} fields - Fields to update (layer_id, props, etc.)
+ * @returns {Promise<number>} Number of updated rows
+ */
 
 export async function getFeatures(layerId) {
   const client = await PGISPool.connect();
@@ -27,7 +27,7 @@ export async function getFeatures(layerId) {
 }
 
 export async function updateFeatures(updates) {
-    const q = `
+  const q = `
       WITH data AS (
         SELECT
           (elem->>'id')::uuid                                      AS id,
@@ -45,21 +45,22 @@ export async function updateFeatures(updates) {
       RETURNING f.id;
     `;
 
-    const client = await PGISPool.connect();
+  const client = await PGISPool.connect();
 
-    try {
-      await client.query("BEGIN");
-      const { rows } = await client.query(q, [JSON.stringify(updates)]);
-      await client.query("COMMIT");
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(q, [JSON.stringify(updates)]);
+    await client.query("COMMIT");
 
-      const updated = rows.map(r => r.id);
-      const notFound = updates.map(u => u.id).filter(id => !updated.includes(id));
-      return { updated: updated.length, notFound };
-    } catch (e) {
-      await client.query("ROLLBACK");
-      throw e;
-    } finally {
-      client.release();
-    }
+    const updated = rows.map((r) => r.id);
+    const notFound = updates
+      .map((u) => u.id)
+      .filter((id) => !updated.includes(id));
+    return { updated: updated.length, notFound };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
-
