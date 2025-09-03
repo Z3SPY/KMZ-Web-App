@@ -1,68 +1,79 @@
-import { XMLParser, XMLBuilder, XMLValidator } from "fast-xml-parser";
+import { XMLParser, XMLBuilder } from "fast-xml-parser";
 import fs from "fs";
-import { getFileAsLayersAndFeatures } from "./files.js";
-import { features } from "process";
+import path from "path";
+import yazl from "yazl";
 
-// const kmlFile = "./uploads/ABH-ARIN-FDH-06.kml";
-// const awsFile = "./uploads/aws.kml";
-// const kmlContent = fs.readFileSync(kmlFile, "utf-8");
-
-// const options = {
-//   ignoreAttributes: false,
-// };
-// const parser = new XMLParser(options);
-// const kmlData = parser.parse(kmlContent);
-
-function findAndReplace(obj, name, newValue) {
+function findAndReplace(obj, name, newValue, counter) {
   const targetKey = "MultiGeometry";
   if (Array.isArray(obj)) {
     for (let i = 0; i < obj.length; i++) {
-      findAndReplace(obj[i], name, newValue);
+      findAndReplace(obj[i], name, newValue, counter);
     }
   } else if (obj !== null && typeof obj === "object") {
     for (let key in obj) {
       if (key === targetKey) {
         if (obj.name === name) {
           for (let key2 in obj[key]) {
-            console.log(obj[key][key2]);
             let items = obj[key][key2];
             if (!Array.isArray(items)) {
               items = [items];
             }
-            for (let coor of items) {
-              coor.coordinates = newValue;
-            }
+            items[counter].coordinates = newValue;
           }
         }
       } else {
-        findAndReplace(obj[key], name, newValue);
+        findAndReplace(obj[key], name, newValue, counter);
       }
     }
   }
 }
-export async function inject(kmlFile, dbData) {
-  const kmlContent = fs.readFileSync(kmlFile, "utf-8");
 
+function createKMZ(kml, outPath, filename = "doc.kml") {
+  return new Promise((resolve, reject) => {
+    const zipfile = new yazl.ZipFile();
+
+    const kmlBuffer = Buffer.from(kml, "utf8");
+    if (!kmlBuffer.length) {
+      return reject(new Error("KML string is empty!"));
+    }
+    zipfile.addBuffer(kmlBuffer, filename);
+
+    const outStream = fs.createWriteStream(outPath);
+    zipfile.outputStream.pipe(outStream);
+
+    outStream.on("finish", () => {
+      console.log("FINISHED");
+      resolve(outPath);
+    });
+    outStream.on("error", reject);
+    zipfile.end();
+  });
+}
+
+export async function inject(kmlFile, dbData, id) {
   const options = {
     ignoreAttributes: false,
   };
   const parser = new XMLParser(options);
-  const kmlData = parser.parse(kmlContent);
+  const kmlData = parser.parse(kmlFile);
 
   for (const layer of dbData) {
     if (layer.features.length > 0) {
       for (const features of layer.features) {
         const feature_name = features.props.Name;
         if (features.geom.geometries) {
+          let counter = 0;
           for (const geom of features.geom.geometries) {
             const c = [];
             for (const coor of geom.coordinates || []) {
               c.push(coor.join(","));
             }
             const processed = c.join(" ");
-            findAndReplace(kmlData, feature_name, processed);
+            findAndReplace(kmlData, feature_name, processed, counter);
+            counter++;
           }
         } else {
+          let counter = 0;
           for (const coor of features.geom.coordinates || []) {
             let processed = "";
             if (features.geom.type === "Point") {
@@ -75,8 +86,11 @@ export async function inject(kmlFile, dbData) {
               processed = features.geom.coordinates
                 .map((ring) => ring.map((c) => c.join(",")).join(" "))
                 .join(" ");
+            } else if (features.geom.type === "MultiLineString") {
+              processed = coor.map((c) => c.join(",")).join(" ");
             }
-            findAndReplace(kmlData, feature_name, processed);
+            findAndReplace(kmlData, feature_name, processed, counter);
+            counter++;
           }
         }
       }
@@ -84,11 +98,13 @@ export async function inject(kmlFile, dbData) {
   }
   const builder = new XMLBuilder(options);
   const kml = builder.build(kmlData);
-  fs.writeFileSync("kml.kml", kml, "utf-8");
-}
-export async function test() {
-  const dbData = await getFileAsLayersAndFeatures(
-    "62ad4c2a-829f-485c-bee0-81ea9315f9d9",
-  );
-  inject("./uploads/ABH-ARIN-FDH-06.kml", dbData);
+  const folder = "temp";
+  const filePath = path.join(folder, `${id}.kmz`);
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder, { recursive: true });
+  }
+
+  await createKMZ(kml, filePath)
+    .then((file) => console.log("KMZ created"))
+    .catch(console.error);
 }

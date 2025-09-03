@@ -4,7 +4,7 @@ import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 
-import type { Feature, FeatureCollection, LineString, Geometry  } from "geojson";
+import type { Feature, FeatureCollection, LineString, Geometry } from "geojson";
 
 import axios from "axios";
 import React from "react";
@@ -16,8 +16,6 @@ type MyProps = {
   extrude: number;
   visibility: number;
 };
-
-
 
 async function ExtractAllKMZFeatures() {
   return axios
@@ -36,7 +34,6 @@ export default function Map() {
   type LeafletGeoJSON = ReturnType<typeof L.geoJSON>;
   const elRef = useRef(null);
   const mapRef = useRef<any | null>(null);
-  
 
   // Read-only display layer (all features)
   const displayLayerRef = useRef<L.GeoJSON | null>(null);
@@ -45,7 +42,6 @@ export default function Map() {
 
   const [popUpState, setPopUpState] = useState<boolean>(false);
   const popupRef = useRef<L.Popup | null>(null);
-
 
   const isEditingRef = useRef(false);
   const lastHighlightedRef = useRef<L.Layer | null>(null);
@@ -56,7 +52,7 @@ export default function Map() {
   //** HELPERS  */
   async function saveEditsToOriginalKMZ(updates: any[]) {
     console.log("Edited features:", updates);
-  
+
     try {
       await fetch("http://localhost:3000/features/saveEdit", {
         method: "PATCH",
@@ -67,12 +63,11 @@ export default function Map() {
       console.error("Failed to save edits:", err);
     }
   }
-  
 
   function isEditedEvent(evt: L.LeafletEvent): evt is L.DrawEvents.Edited {
     return !!(evt as any)?.layers?.eachLayer;
   }
-  
+
   /** ================================ */
 
   useEffect(() => {
@@ -88,15 +83,13 @@ export default function Map() {
       worldCopyJump: true,
     });
 
-
     mapRef.current = map;
 
-
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(map);
-
 
     const editableGroup = new L.FeatureGroup();
     editableGroupRef.current = editableGroup;
@@ -111,17 +104,16 @@ export default function Map() {
         polyline: false,
         polygon: false,
         rectangle: false,
-      },                       
-      edit: { featureGroup: editableGroup }
+      },
+      edit: { featureGroup: editableGroup },
     });
     map.addControl(drawControl);
-
 
 
     /** EVENT LISTENERS FOR EDIT  */
     map.on("draw:editstart", () => {
       isEditingRef.current = true;
-      map.doubleClickZoom.disable(); 
+      map.doubleClickZoom.disable();
       map.closePopup();
     });
     map.on("draw:editstop", () => {
@@ -130,15 +122,13 @@ export default function Map() {
     });
 
     map.on("draw:edited", (evt) => {
-      if (!isEditedEvent(evt)) return;            
-    
+      if (!isEditedEvent(evt)) return;
+
       const edited: L.Layer[] = [];
       evt.layers.eachLayer((lyr: L.Layer) => edited.push(lyr));
-    
-      const updates = edited
-        .map((l: any) => l.toGeoJSON?.())
-        .filter(Boolean);
-      
+
+      const updates = edited.map((l: any) => l.toGeoJSON?.()).filter(Boolean);
+
       console.log(updates);
 
       saveEditsToOriginalKMZ(updates);
@@ -160,12 +150,12 @@ export default function Map() {
     map.on("popupclose", () => {
       const lyr = lastHighlightedRef.current;
       if (!lyr) return;
-    
+
       const eg = editableGroupRef.current!;
       if (!eg.hasLayer(lyr)) {
         (lyr as any).setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 });
       }
-    
+
       lastHighlightedRef.current = null;
       setPopUpState(false);
     });
@@ -219,13 +209,12 @@ export default function Map() {
 
     map.on("click", () => map.closePopup());
 
-
     return () => {
       map.remove();
       mapRef.current = null;
       editableGroupRef.current = null;
       displayLayerRef.current = null;
-      popupRef.current = null; 
+      popupRef.current = null;
     };
   }, []);
 
@@ -304,31 +293,40 @@ export default function Map() {
             className: "choice-popup",
             offset: L.point(0, -8),
           }));
-      
+
           console.log(layer);
           console.log(popUpState);
-      
-
 
           if (eg.hasLayer(layer)) {
             eg.removeLayer(layer);
             display.addLayer(layer);
             if (!display.hasLayer(layer)) display.addLayer(layer);
-            (layer as any).setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 });
+            (layer as any).setStyle?.({
+              color: "#ff7800",
+              weight: 4,
+              opacity: 0.8,
+            });
           } else {
-            setPopUpState(prev => {
+            setPopUpState((prev) => {
               const next = !prev; // flip
               if (next) {
-                (layer as any).setStyle?.({ color: "#AE75DA", weight: 6, opacity: 0.9 });
+                (layer as any).setStyle?.({
+                  color: "#AE75DA",
+                  weight: 6,
+                  opacity: 0.9,
+                });
                 (layer as any).bringToFront?.();
-                lastHighlightedRef.current = layer; 
+                lastHighlightedRef.current = layer;
               } else {
-                (layer as any).setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 });
+                (layer as any).setStyle?.({
+                  color: "#ff7800",
+                  weight: 4,
+                  opacity: 0.8,
+                });
               }
 
               return next;
             });
-      
 
             // ================================
             // PopUp
@@ -343,47 +341,59 @@ export default function Map() {
 
             popup.setLatLng(e.latlng).setContent(html).openOn(map);
 
-
             // ===============================
-            // EVENM LISTENERS 
+            // EVENM LISTENERS
             // ================================
             layer.on("popupopen", () => {
-              (layer as any).setStyle?.({ color: "#AE75DA", weight: 4, opacity: 0.8 });
+              (layer as any).setStyle?.({
+                color: "#AE75DA",
+                weight: 4,
+                opacity: 0.8,
+              });
             });
-          
+
             layer.on("popupclose", () => {
-              (layer as any).setStyle?.({ color: "#ff7800", weight: 6, opacity: 0.9 });
+              (layer as any).setStyle?.({
+                color: "#ff7800",
+                weight: 6,
+                opacity: 0.9,
+              });
             });
-      
+
             setTimeout(() => {
-              document.getElementById("pp-add")?.addEventListener("click", () => {
-                const feature = (layer as any).feature;            
-                attachToIdRef.current = feature.id;                
-                addGeometry("line");
-                console.log("Add Geometry clicked");
-                map.closePopup()
-              }, {once: true});
-              document.getElementById("pp-edit")?.addEventListener("click", () => {
-                map.closePopup()
-                display.removeLayer(layer); 
-                eg.addLayer(layer); 
-                console.log(layer);
-                (layer as any).setStyle?.({ color: "#1e90ff", weight: 4, opacity: 0.8 });
-                console.log("Edit clicked");
-              }, {once: true});
+              document.getElementById("pp-add")?.addEventListener(
+                "click",
+                () => {
+                  map.closePopup();
+                  console.log("Add Geometry clicked");
+                },
+                { once: true },
+              );
+              document.getElementById("pp-edit")?.addEventListener(
+                "click",
+                () => {
+                  map.closePopup();
+                  display.removeLayer(layer);
+                  eg.addLayer(layer);
+                  console.log(layer);
+                  (layer as any).setStyle?.({
+                    color: "#1e90ff",
+                    weight: 4,
+                    opacity: 0.8,
+                  });
+                  console.log("Edit clicked");
+                },
+                { once: true },
+              );
             }, 0);
           }
         });
-      }
-
-      
+      },
     }).addTo(map);
 
-    displayLayerRef.current = display;  
+    displayLayerRef.current = display;
 
-
-
-    // Map Re View 
+    // Map Re View
     const bounds = display.getBounds();
     if (bounds.isValid()) {
       map.flyToBounds(bounds, {

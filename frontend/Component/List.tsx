@@ -1,10 +1,6 @@
 import axios from "axios";
-import React from "react";
-import { useEffect, useState } from "react";
-import tokml from "geojson-to-kml";
-import type { Feature, FeatureCollection, Geometry } from "geojson";
-import JSZip from "jszip";
-import type { UploadStatus } from "./Floating";
+import { useEffect } from "react";
+import type { FeatureCollection } from "geojson";
 
 type KmzFile = {
   id: string;
@@ -39,29 +35,50 @@ export const List = ({
   setStatus
 }: ListProps) => {
   // Impossible To Keep Styles (View Only)
-  async function downloadKMZ(fc: FeatureCollection, name: string) {
-    const kml = tokml(fc as any, {
-      name: "name",
-      description: "description",
-      simplestyle: true,
-    });
-    const zip = new JSZip();
-    zip.file("doc.kml", kml); // KMZ expects 'doc.kml'
-    const kmzBlob = await zip.generateAsync({
-      type: "blob",
-      compression: "DEFLATE",
-    });
+  async function downloadKMZ(fileId: string, fileName: string) {
+    try {
+      const response = await axios.get(
+        `http://localhost:3000/download/${fileId}`,
+        {
+          responseType: "blob",
+        },
+      );
 
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(
-      new Blob([kmzBlob], { type: "application/vnd.google-earth.kmz" }),
-    );
-    a.download = `${name}(Copy).kmz`;
-    a.click();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+
+      link.setAttribute("download", `${fileName}`);
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+    }
+    // const kml = tokml(fc as any, {
+    //   name: "name",
+    //   description: "description",
+    //   simplestyle: true,
+    // });
+    // const zip = new JSZip();
+    // zip.file("doc.kml", kml); // KMZ expects 'doc.kml'
+    // const kmzBlob = await zip.generateAsync({
+    //   type: "blob",
+    //   compression: "DEFLATE",
+    // });
+    //
+    // const a = document.createElement("a");
+    // a.href = URL.createObjectURL(
+    //   new Blob([kmzBlob], { type: "application/vnd.google-earth.kmz" }),
+    // );
+    // a.download = `${name}(Copy).kmz`;
+    // a.click();
 
     setStatus("downloading");
 
-    URL.revokeObjectURL(a.href);
+    // URL.revokeObjectURL(a.href);
     setTimeout(() => setStatus("idle"), 5000); // Tempo  
   }
 
@@ -105,7 +122,7 @@ export const List = ({
                         updateMapView(l.id)
                       }
                     >
-                      <div className="List-data" >
+                      <div className="List-data">
                         <p>
                           <span
                             className={`caret ${isOpen ? "down" : ""}`}
@@ -144,7 +161,10 @@ export const List = ({
                             ? openLayerChildren.map((child) => {
                                 return (
                                   <>
-                                    <div className="Content" id={`Content-${child.id}`}>
+                                    <div
+                                      className="Content"
+                                      id={`Content-${child.id}`}
+                                    >
                                       <input
                                         type="checkbox"
                                         id={`child-${child.id}`}
@@ -178,7 +198,7 @@ export const List = ({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                downloadKMZ(exportFC, l.name);
+                                downloadKMZ(l.id, l.name);
                               }}
                             >
                               Download Copy {/** Remove If Bad */}

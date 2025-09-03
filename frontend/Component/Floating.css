@@ -1,49 +1,48 @@
-
-html, body {
-    font-family:monospace;
+html,
+body {
+  font-family: monospace;
 }
 
 .Floating {
-    width: 20rem;
-    height: 60vh;
-    margin: 2rem;
-    position: fixed;
-    background-color: rgba(255, 255, 255, 0.815);
-    z-index: 999;
-    box-shadow: 1px 1px 2rem rgba(0, 0, 0, 0.541);
-    right: 0;
-    display: flex;
-    flex-direction: column;
-    color: black;
-    border-radius: 15px;
+  width: 20rem;
+  height: 60vh;
+  margin: 2rem;
+  position: fixed;
+  background-color: rgba(255, 255, 255, 0.815);
+  z-index: 999;
+  box-shadow: 1px 1px 2rem rgba(0, 0, 0, 0.541);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  color: black;
+  border-radius: 15px;
 }
 
 .file-wrapper {
-    padding: 10px;
-    display: flex;
-    height: auto;
-    flex-direction: column;
-    background-color: rgba(0, 0, 0, 0.144);
-    flex-grow: 1;
-    justify-content: center;
-    margin: 7.5px;
-    border-radius: 15px;
+  padding: 10px;
+  display: flex;
+  height: auto;
+  flex-direction: column;
+  background-color: rgba(0, 0, 0, 0.144);
+  flex-grow: 1;
+  justify-content: center;
+  margin: 7.5px;
+  border-radius: 15px;
 }
 
 .file-info {
-    color: black;
-    width: 100%;
-    font-size: small;
-    height: auto;
+  color: black;
+  width: 100%;
+  font-size: small;
+  height: auto;
 }
 
 .file {
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* adds "..." */
-  }
-
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* adds "..." */
+}
 
 .file::file-selector-button {
   background-color: #222831; /* custom color */
@@ -54,113 +53,103 @@ html, body {
   cursor: pointer;
 }
 
-
 .file::file-selector-button:hover {
-  background-color: #393E46; /* hover effect */
+  background-color: #393e46; /* hover effect */
 }
 
 /* Upload Progress Bar */
 
 .upload {
-
 }
 
 .upload-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-
 .upload-btn {
-    margin-top: 10px;
-    border-radius: 15px;
-    background-color: #222831;
-    transition: all 0.2s;
+  margin-top: 10px;
+  border-radius: 15px;
+  background-color: #222831;
+  transition: all 0.2s;
 }
 
 .upload-meta select {
-    background-color: white;
-    color: #222;
+  background-color: white;
+  color: #222;
 }
 
 .upload-btn:hover {
-    transform: translateY(5px);
-    border-color: #222831;
+  transform: translateY(5px);
+  border-color: #222831;
 }
 
 .upload-wrapper,
 .upload-bar {
-    margin-top: 10px;
-    height: 2rem;
-    border-radius: 15px;
+  margin-top: 10px;
+  height: 2rem;
+  border-radius: 15px;
 }
 
 .upload-wrapper {
-    background-color: #222831;
+  background-color: #222831;
 }
 
 .upload-bar {
-    width: 100%;
-    background-color: skyblue;
-    transition: all 1s;
+  width: 100%;
+  background-color: skyblue;
+  transition: all 1s;
 }
 
 .upload p {
-    color: black;
-    font-size: medium;
+  color: black;
+  font-size: medium;
 }
-
 
 /* LAYER LIST */
 
 .List {
-    flex-grow: 5;
-    border: rgba(85, 82, 82, 0.815) solid 1px;
-    margin: 7.5px;
-    border-radius: 15px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    max-height: 65%;
+  flex-grow: 5;
+  border: rgba(85, 82, 82, 0.815) solid 1px;
+  margin: 7.5px;
+  border-radius: 15px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 65%;
 }
 
 .List h4 {
-    margin: auto;
-    text-align: center;
-    padding: 2px;
-    border-bottom: #222831 solid 1px;
+  margin: auto;
+  text-align: center;
+  padding: 2px;
+  border-bottom: #222831 solid 1px;
 }
 
 .List-wrapper {
-    list-style: none;
-    padding-left: 0px; 
-    margin: 0;
-    position: relative;
-       
+  list-style: none;
+  padding-left: 0px;
+  margin: 0;
+  position: relative;
 }
 
-
 .List-wrapper li {
-    border-bottom: #222831 solid 1px;
-  
-    display: flex;
-    flex-direction: column;
+  border-bottom: #222831 solid 1px;
 
-    line-height: 40px;         
-    font-size: 12px;
-    white-space: nowrap;       
-    overflow: hidden;        
-    text-overflow: ellipsis;    
+  display: flex;
+  flex-direction: column;
 
-    align-items: center;  
-    justify-content: space-between;  
-  
-  }
+  line-height: 40px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
-
+  align-items: center;
+  justify-content: space-between;
+}
 
 /* Inside Main Box */
-
 
 .List-item {
   border-bottom: 1px solid #222831;
@@ -168,104 +157,94 @@ html, body {
   flex-direction: row;
 }
 
-
 /* tiny caret */
-.caret { 
-  width:0; 
-  height:0; 
+.caret {
+  width: 0;
+  height: 0;
   margin: 0 5px;
-  display:inline-block;
-  border-top:6px solid transparent;
-  border-bottom:6px solid transparent;
-  border-left:6px solid #222; 
+  display: inline-block;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid #222;
 }
 .caret.down {
-  border-left:6px solid transparent; 
-  border-top:6px solid #222;
-  border-right:6px solid transparent;
+  border-left: 6px solid transparent;
+  border-top: 6px solid #222;
+  border-right: 6px solid transparent;
   transform: translateY(5px);
 }
 
 /* actions */
-.List-actions { 
-    display:flex; 
-    gap:6px; 
-    align-items:center;
- }
+.List-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
 
 .List-actions button:hover {
-    background-color: rgb(171, 87, 245);
-    border-color: #222831;
-    transform: translateY(1px);
-
+  background-color: rgb(171, 87, 245);
+  border-color: #222831;
+  transform: translateY(1px);
 }
 
 .List-actions button:nth-child(2):hover {
-    background-color: rgb(255, 85, 0);
+  background-color: rgb(255, 85, 0);
 }
 
-
-.List-actions .List-view, 
-.List-actions .List-delete
-{
-    height:18px; 
-    padding:0 6px; 
-    font-size:10px; 
-    border:none; 
-    cursor:pointer;
-    font-size:10px; 
-    line-height:12px;
-    transition: all ;
+.List-actions .List-view,
+.List-actions .List-delete {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 12px;
+  transition: all;
 }
-
-    
 
 /* List Data Format */
 .List-data {
-    display: flex;
-    flex-direction: row;
-    gap: .5rem;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
 }
 
-
 /* dropdown area */
-.List-dropdown { 
-    padding: 6px 10px; 
-    background:#f7f7f7; 
-    font-size:12px; 
-    margin-bottom: 20px;
+.List-dropdown {
+  padding: 6px 10px;
+  background: #f7f7f7;
+  font-size: 12px;
+  margin-bottom: 20px;
 }
 
 /* Checkbox holder */
 .List-dropdown .Content {
-    max-width: 15rem;
-    min-width: 15rem;
-    border-bottom: #222 solid 1px;
-    
+  max-width: 15rem;
+  min-width: 15rem;
+  border-bottom: #222 solid 1px;
 }
 
-
-
-/**/ 
+/**/
 .Filter {
-    padding: 10px 10px;
-    gap: 5px;
-    display: flex;
+  padding: 10px 10px;
+  gap: 5px;
+  display: flex;
 }
 
 .Filter select {
-    background-color: #222;
-    border-radius: 15px;
-    font-size: 12px;
-    width: 75px;
+  background-color: #222;
+  border-radius: 15px;
+  font-size: 12px;
+  width: 75px;
 }
 
 .Filter input {
-    font-size: 12px;
-    width: 7.5rem;
-    background-color: #222;
-    color: white;
-    flex-grow: 1;
+  font-size: 12px;
+  width: 7.5rem;
+  background-color: #222;
+  color: white;
+  flex-grow: 1;
 }
 
 
