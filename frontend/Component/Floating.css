@@ -247,3 +247,17 @@ body {
   flex-grow: 1;
 }
 
+
+.Download {
+    background-color: #22222238;
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10000;
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: x-large;
+    font-weight: bolder;
+}

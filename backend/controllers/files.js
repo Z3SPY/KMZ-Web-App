@@ -31,6 +31,26 @@ export async function getFileAsLayersAndFeatures(fileId) {
   return result;
 }
 
+export async function getFileDataFromLayerID(layer_id) {
+  const client = await PGISPool.connect();
+  try {
+    const { rows } = await client.query(
+      `SELECT kmz_id FROM "LAYERS" WHERE id = $1`,
+      [layer_id]
+    );
+
+    if (rows.length === 0 || !rows[0]?.kmz_id) return null;
+
+    const fileId = rows[0].kmz_id;
+    return await getFileAsLayersAndFeatures(fileId);
+  } catch (error) {
+    throw error; // no need for ROLLBACK on SELECT
+  } finally {
+    client.release();
+  }
+}
+
+
 export async function getFilesWithLoc() {
   const client = await PGISPool.connect();
   try {
