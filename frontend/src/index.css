@@ -62,7 +62,7 @@ button {
 
 
 
-.Popup-Choice {
+.popup-choice {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -72,16 +72,18 @@ button {
   padding: 10px;
   z-index: 999999;
   display: flex;
+  flex-direction: row;
   gap: .5rem;
   align-items: center;
+  width: auto;
 }
 
-.Popup-Choice button {
+.popup-choice button {
   box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.466);
   transition: all 0.2s;
   width: 5rem;
 }
 
-.Popup-Choice button:hover {
+.popup-choice button:hover {
   transform: translateY(1px);
 }

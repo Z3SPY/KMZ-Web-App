@@ -57,6 +57,12 @@ export const up = (pgm) => {
     );
   `);
 
+  pgm.sql(`
+    ALTER TABLE "FEATURES"
+    ALTER COLUMN geom TYPE geometry(Geometry, 4326)
+    USING geom;
+  `);
+
 
   /** UPLOAD (On stand by? dunno if its being used?) */
   pgm.createTable("UPLOADS", {
@@ -108,5 +114,10 @@ export const down = (pgm) => {
   pgm.dropTable("FEATURES", { ifExists: true, cascade: true });
   pgm.dropTable("UPLOADS", { ifExists: true, cascade: true });
   pgm.dropTable("KMZ_INFO", { ifExists: true, cascade: true });
+  pgm.sql(`
+    ALTER TABLE "FEATURES"
+    ALTER COLUMN geom TYPE geometry(GeometryZ, 4326)
+    USING ST_Force3DZ(geom);
+  `);
 
 };

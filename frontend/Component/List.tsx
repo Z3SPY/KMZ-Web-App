@@ -1,6 +1,10 @@
 import axios from "axios";
-import { useEffect } from "react";
-import type { FeatureCollection } from "geojson";
+import React from "react";
+import { useEffect, useState } from "react";
+import tokml from "geojson-to-kml";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
+import JSZip from "jszip";
+import type { UploadStatus } from "./Floating";
 
 type KmzFile = {
   id: string;
@@ -37,6 +41,8 @@ export const List = ({
   // Impossible To Keep Styles (View Only)
   async function downloadKMZ(fileId: string, fileName: string) {
     try {
+      setStatus("downloading");
+
       const response = await axios.get(
         `http://localhost:3000/download/${fileId}`,
         {
@@ -53,33 +59,15 @@ export const List = ({
       link.click();
 
       link.remove();
+      
+
       window.URL.revokeObjectURL(url);
+      setTimeout(() => { setStatus("idle")}, 2000); // tempo
+
     } catch (error) {
       console.error("Download failed:", error);
     }
-    // const kml = tokml(fc as any, {
-    //   name: "name",
-    //   description: "description",
-    //   simplestyle: true,
-    // });
-    // const zip = new JSZip();
-    // zip.file("doc.kml", kml); // KMZ expects 'doc.kml'
-    // const kmzBlob = await zip.generateAsync({
-    //   type: "blob",
-    //   compression: "DEFLATE",
-    // });
-    //
-    // const a = document.createElement("a");
-    // a.href = URL.createObjectURL(
-    //   new Blob([kmzBlob], { type: "application/vnd.google-earth.kmz" }),
-    // );
-    // a.download = `${name}(Copy).kmz`;
-    // a.click();
-
-    setStatus("downloading");
-
-    // URL.revokeObjectURL(a.href);
-    setTimeout(() => setStatus("idle"), 5000); // Tempo  
+    
   }
 
   function shortenName(name: string, maxLength = 25) {
@@ -90,9 +78,22 @@ export const List = ({
   }
 
   async function handleDelete(fileId: string) {
+
+    if (!confirm("Delete this file?")) return;
+
     try {
       await axios.delete(`http://localhost:3000/files/${fileId}`);
+
+      const wasOpen = openLayer === fileId;
+
+
       getKMZList();
+
+      window.dispatchEvent(
+        new CustomEvent("kmz:changed", {
+          detail: { fileId: wasOpen ? null : openLayer }
+        })
+      );
     } catch (error) {
       console.log(error);
     }
