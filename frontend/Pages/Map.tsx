@@ -49,6 +49,7 @@ export default function Map() {
 
   const isEditingRef = useRef(false);
   const lastHighlightedRef = useRef<L.Layer | null>(null);
+  const attachToIdRef = useRef<string | null>(null);
 
 
 
@@ -116,6 +117,8 @@ export default function Map() {
     map.addControl(drawControl);
 
 
+
+    /** EVENT LISTENERS FOR EDIT  */
     map.on("draw:editstart", () => {
       isEditingRef.current = true;
       map.doubleClickZoom.disable(); 
@@ -139,8 +142,21 @@ export default function Map() {
       console.log(updates);
 
       saveEditsToOriginalKMZ(updates);
+
+      const eg = editableGroupRef.current!;
+      const display = displayLayerRef.current!;
+
+      edited.forEach((l: any) => {
+        eg.removeLayer(l);                      // <-- remove from edit group
+        display.addLayer(l);                    // <-- back to display
+        l.setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 }); // base style
+      });
+
+      
     });
 
+
+    /** READ POP UP CLOSE */
     map.on("popupclose", () => {
       const lyr = lastHighlightedRef.current;
       if (!lyr) return;
@@ -160,6 +176,47 @@ export default function Map() {
       className: "choice-popup", // optional for custom styling
     });
 
+    /** EVEN LISTENER */
+    map.on("draw:created",  async (e : any) => {
+      // Activate a visual?
+      // Add to feature?
+      const map = mapRef.current!;
+      const eg = editableGroupRef.current!;
+      const display = displayLayerRef.current!;
+
+
+      const layer : L.Layer = e.layer;
+
+      // Not in display
+      if (!display.hasLayer(layer)) {
+        display.addLayer(layer);
+        (layer as any).setStyle?.({ color: "#ff7800", weight: 6, opacity: 0.9 });
+
+        // Once Added Open PopPup add name
+
+      }
+
+      
+
+
+      // Add to sql
+      /*const parentId = attachToIdRef.current;
+      if (!parentId) return;
+
+      const newGeom = e.layer.toGeoJSON().geometry;
+
+
+      // Attach fetch call
+      await fetch("/features/attach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: parentId, geometry: newGeom, mode: "collect" }) // or "union"
+      });
+    
+      attachToIdRef.current = null; */
+
+    })
+
     map.on("click", () => map.closePopup());
 
 
@@ -173,7 +230,39 @@ export default function Map() {
   }, []);
 
 
+  /** Handle Map */
+  const activeDrawerRef = useRef<L.Draw.Feature | null>(null);
 
+  function addGeometry(geoType: "point" | "line" | "polygon") {
+    const map = mapRef.current;
+    if (!map) return;
+
+    activeDrawerRef.current?.disable();
+
+    let drawer: L.Draw.Feature;
+    const shapeOptions = {color: "#1e90ff", weight: 4, opacity: 0.9};
+
+    switch(geoType) {
+      case "point":
+        drawer = new L.Draw.Marker(map, {});
+        break;
+      case "line":
+        drawer = new L.Draw.Polyline(map, { shapeOptions });
+        break;
+      case "polygon":
+        drawer = new L.Draw.Polygon(map, { shapeOptions });
+        break;
+      default:
+        return;
+     
+    }
+
+    activeDrawerRef.current = drawer;
+    drawer.enable();
+    
+  }
+
+  /** */
   function handleGeoJSON(fc: FeatureCollection<LineString, MyProps>) {
     const map = mapRef.current!;
     console.log(`FC: `, fc);
@@ -268,8 +357,11 @@ export default function Map() {
       
             setTimeout(() => {
               document.getElementById("pp-add")?.addEventListener("click", () => {
-                map.closePopup()
+                const feature = (layer as any).feature;            
+                attachToIdRef.current = feature.id;                
+                addGeometry("line");
                 console.log("Add Geometry clicked");
+                map.closePopup()
               }, {once: true});
               document.getElementById("pp-edit")?.addEventListener("click", () => {
                 map.closePopup()

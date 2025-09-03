@@ -30,3 +30,11 @@ featureRoutes.patch("/saveEdit", async (req, res, next) => {
     next(e);
   }
 });
+
+
+featureRoutes.patch("/addGeometry", async (req, res, next) => {
+  try {
+    //const {id, geometry, mode} = req?.body;
+  } catch {}
+})
+

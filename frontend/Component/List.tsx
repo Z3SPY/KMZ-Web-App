@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import tokml from "geojson-to-kml";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import JSZip from "jszip";
+import type { UploadStatus } from "./Floating";
 
 type KmzFile = {
   id: string;
@@ -24,6 +25,7 @@ type ListProps = {
   layerList: KmzFile[] | null;
   openLayer: string | null;
   exportFC: FeatureCollection;
+  setStatus: (a : UploadStatus) => void;
 };
 
 export const List = ({
@@ -34,6 +36,7 @@ export const List = ({
   layerList,
   openLayer,
   exportFC,
+  setStatus
 }: ListProps) => {
   // Impossible To Keep Styles (View Only)
   async function downloadKMZ(fc: FeatureCollection, name: string) {
@@ -55,7 +58,11 @@ export const List = ({
     );
     a.download = `${name}(Copy).kmz`;
     a.click();
+
+    setStatus("downloading");
+
     URL.revokeObjectURL(a.href);
+    setTimeout(() => setStatus("idle"), 5000); // Tempo  
   }
 
   function shortenName(name: string, maxLength = 25) {

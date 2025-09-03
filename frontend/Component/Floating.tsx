@@ -5,7 +5,7 @@ import axios from "axios";
 import Filter from "./Filter";
 import { List } from "./List";
 
-type UploadStatus = "idle" | "uploading" | "success" | "error";
+export type UploadStatus = "idle" | "uploading" | "success" | "error" | "downloading";
 
 const REGION_OPTIONS = ["CR", "ER", "WR", "SR"];
 const CITY_OPTIONS = [
@@ -321,6 +321,9 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
   return (
     <>
+      <div className={status === "downloading" || status === "uploading" ? "Download" : ""}
+        style={ { display: "none"}}
+      > {status.toUpperCase()} </div>
       <div className="Floating">
         {/** Separate Component */}
         <div className="file-wrapper">
@@ -420,6 +423,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           layerList={filteredLayerList}
           openLayer={openLayer}
           exportFC={exportFC as FeatureCollection}
+          setStatus={setStatus}
         />
 
         <Filter
