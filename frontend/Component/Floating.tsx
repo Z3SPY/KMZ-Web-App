@@ -7,7 +7,12 @@ import axios from "axios";
 import Filter from "./Filter";
 import { List } from "./List";
 
-export type UploadStatus = "idle" | "uploading" | "success" | "error" | "downloading";
+export type UploadStatus =
+  | "idle"
+  | "uploading"
+  | "success"
+  | "error"
+  | "downloading";
 
 const REGION_OPTIONS = ["CR", "ER", "WR", "SR"];
 const CITY_OPTIONS = [
@@ -34,8 +39,6 @@ type KmzFile = {
   id: string;
   name: string;
 };
-
-
 
 interface FloatingProps {
   handleGeoJSON?: (fc: any) => void;
@@ -70,7 +73,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
   // EXTRA HELPER FOR FILTERING CHILDREN
   const [currentLayers, setCurrentLayers] = useState<any[] | null>(null);
 
-  
   // toggle a child and immediately update the map
   function toggleChildCheckbox(childId: string, checked: boolean) {
     setOpenLayerChildren((prev) => {
@@ -170,12 +172,14 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       if (data?.ok && data?.geojson && handleGeoJSON) {
         handleGeoJSON(data.geojson as FeatureCollection);
       }
-    } catch {
-      alert("File upload failed!");
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response) {
+        alert(`${e.response.data.error}`);
+      } else alert("File upload failed!");
       setStatus("error");
       setUploadProgress(0);
       setUploadButtonStatus(false);
-      setFile(null) 
+      setFile(null);
     }
   }
 
@@ -193,7 +197,6 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       console.log(`ERROR: ${e}`);
     }
   }
-
 
   //** ========================================= */
 
@@ -237,14 +240,13 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
     if (didFetch.current) return;
     didFetch.current = true;
     getKMZList();
-    
   }, []);
 
   useEffect(() => {
     function onChanged(e: any) {
       const fileId = e?.detail?.fileId ?? openLayer;
       if (fileId) {
-        updateMapView(fileId); 
+        updateMapView(fileId);
       } else {
         // clear the map if nothing to show (e.g., deleted the open file)
         handleGeoJSON?.({ type: "FeatureCollection", features: [] });
@@ -284,9 +286,15 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
 
   return (
     <>
-      <div className={status === "downloading" || status === "uploading" ? "Download" : ""}
-        style={ { display: "none"}}
-      > {status.toUpperCase()} </div>
+      <div
+        className={
+          status === "downloading" || status === "uploading" ? "Download" : ""
+        }
+        style={{ display: "none" }}
+      >
+        {" "}
+        {status.toUpperCase()}{" "}
+      </div>
       <div className="Floating">
         {/** Separate Component */}
         <div className="file-wrapper">

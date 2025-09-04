@@ -4,7 +4,7 @@ export async function handleDuplicate(e, res) {
   switch (e.constraint) {
     case "KMZ_INFO_sha256_key":
       const fileName = await getDuplicateFile(e.detail)
-      res.status(500).json({
+      res.status(409).json({
         ok: false,
         error: `File Already Exist as ${fileName}`,
       });
