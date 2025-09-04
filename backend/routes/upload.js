@@ -139,7 +139,6 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
         await handleDuplicate(e, res)
         return;
       }
-
       return res.status(500).json({
         ok: false,
         error: "Database error",
