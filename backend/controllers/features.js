@@ -82,7 +82,7 @@ export async function addGeometryToFeature(id, newGeometry, mode) {
       ? `ST_Force3DZ(ST_CurveToLine(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON($1),4326))))`
       : `ST_CurveToLine(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON($1),4326)))`;
 
-    const base     = (dims >= 3)
+    const base = (dims >= 3)
       ? `ST_Force3DZ(ST_CurveToLine(ST_MakeValid(geom)))`
       : `ST_CurveToLine(ST_MakeValid(geom))`;
 
