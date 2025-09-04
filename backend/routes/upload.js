@@ -14,6 +14,7 @@ import path from "path";
 import os from "os";
 import { fileURLToPath } from "url";
 import { warn } from "console";
+import { handleDuplicate } from "../controllers/handleDuplicate.js";
 
 export const uploadRoutes = Router();
 
@@ -84,6 +85,7 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
       path: filePath,
     });
 
+
     let layers = [];
 
     try {
@@ -93,7 +95,7 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
     } catch (err) {
       throw new Error(
         "listAllLayers failed: " +
-          (err instanceof Error ? err.message : String(err)),
+        (err instanceof Error ? err.message : String(err)),
       );
     }
 
@@ -130,7 +132,14 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
         { sizeBytes: req.file.size, contentType: req.file.mimetype },
       );
     } catch (e) {
-      console.warn("storeToDB failed (continuing):", e);
+      console.warn("storeToDB failed (continuing):", e.code);
+      // if error code is unique constraint violation
+      console.log(e.code)
+      if (e.code === "23505") {
+        await handleDuplicate(e, res)
+        return;
+      }
+
       return res.status(500).json({
         ok: false,
         error: "Database error",

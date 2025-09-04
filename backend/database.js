@@ -24,7 +24,7 @@ export async function storeToDB(
     let loc = null;
     try {
       loc = await getOneLoc(layers);
-    } catch {}
+    } catch (e) { throw e }
 
     // Create Files Row
     const kmzRes = await client.query(
@@ -54,6 +54,7 @@ export async function storeToDB(
       );
     } catch (e) {
       console.log(e);
+      throw e
     }
 
     for (const layer of layers) {

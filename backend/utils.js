@@ -14,12 +14,6 @@ function gdalPath(p) {
   return p;
 }
 
-async function genFileHash(file) {
-  const { stdout } = await execAsync(`sha256sum "${file}"|awk '{print $1}'`, {
-    maxBuffer: 1024 * 1024 * 16,
-  });
-  return stdout;
-}
 
 export async function kmzToGeoJSON(inputPath, layer) {
   const { data } = await ogr2ogr(gdalPath(inputPath), {
@@ -37,11 +31,6 @@ export async function listAllLayers(inputPath) {
     maxBuffer: 1024 * 1024 * 16,
   });
 
-  const fileHash = await genFileHash(inputPath);
-
-  console.log("==FILEHASH==");
-  console.log(fileHash);
-  console.log("============");
 
   console.log("==STDOUT==");
   console.log(stdout);
