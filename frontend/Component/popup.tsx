@@ -3,7 +3,7 @@ import { useState } from "react";
 
 
 type PopupUIProps = {
-    onAddGeometry: (type: "point" | "line" | "polygon") => void;
+    onAddGeometry: (type: "point" | "line" ) => void;
     onEdit: () => void;
   };
   
@@ -23,7 +23,6 @@ type PopupUIProps = {
       <div className="popup-choice">
         <button onClick={() => onAddGeometry("point")}>Point</button>
         <button onClick={() => onAddGeometry("line")}>Line</button>
-        <button onClick={() => onAddGeometry("polygon")}>Polygon</button>
         <button onClick={() => setMode("main")}>Back</button>
       </div>
     );

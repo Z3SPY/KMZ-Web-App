@@ -143,20 +143,17 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
           },
         },
       );
+      
       setStatus("success");
       setUploadProgress(100);
 
-      const list = await getKMZList();
-
-      const newItem =
-        (data?.fileId && list?.find((x) => x.id === data.fileId)) || //Search for new file
-        list?.find((x) => x.name === file.name) ||
-        (list && list[list.length - 1]);
-
-      if (newItem) {
-        await updateMapView(newItem.id); // opens dropdown + builds children + updates map
-      } else if (data?.ok && data?.geojson && handleGeoJSON) {
-        handleGeoJSON(data.geojson as FeatureCollection);
+      if (data?.fileId) {
+        await updateMapView(data.fileId);
+      } else {
+        // fallback if backend didn’t return fileId
+        const list = await getKMZList();
+        const newItem = list?.find(x => x.name === file.name) || list?.[list.length - 1];
+        if (newItem) await updateMapView(newItem.id);
       }
 
       setTimeout(() => {
@@ -167,9 +164,7 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
         setStatus("idle");
       }, 3000);
 
-      if (data?.ok && data?.geojson && handleGeoJSON) {
-        handleGeoJSON(data.geojson as FeatureCollection);
-      }
+    
     } catch {
       alert("File upload failed!");
       setStatus("error");

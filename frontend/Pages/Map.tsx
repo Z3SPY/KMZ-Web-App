@@ -1,94 +1,165 @@
+// ==================
+// MAP (LEAFLET-PM REFACTOR)
+// ==================
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as L from "leaflet";
-import "leaflet-draw";
 import "leaflet/dist/leaflet.css";
-import "leaflet-draw/dist/leaflet.draw.css";
 
-import type { Feature, FeatureCollection, LineString, Geometry } from "geojson";
+// Leaflet-Geoman (Leaflet-PM)
+import "@geoman-io/leaflet-geoman-free";
+import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 
+import type { FeatureCollection } from "geojson";
 import axios from "axios";
 import React from "react";
 import Floating from "../Component/Floating";
 import { PopupUI } from "../Component/popup";
-import type { Children } from "../Component/geoJsonUtils";
-import { buildFC } from "../Component/geoJsonUtils";
+import { Children, applyStyle, COLORS, getKey, setEditing, toggleEdit } from "../Component/geoJsonUtils";
 
-type MyProps = {
-  Name: string;
-  tessellate: number;
-  extrude: number;
-  visibility: number;
-};
-
-
-async function ExtractAllKMZFeatures() {
-  return axios
-    .get(`http://localhost:3000/list`)
-    .then((res) => {
-      console.log(res.data);
-      return res.data;
-    })
-    .catch((e) => {
-      console.log(`Failed Call Returns: ${e}`);
-      throw e;
-    });
-}
 
 
 // Note Request Refresh acts as a variable less interface
-export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)=>void }) {
+export default function Map({ requestRefresh }: { requestRefresh?: (id?: string) => void }) {
   type LeafletGeoJSON = ReturnType<typeof L.geoJSON>;
-  const elRef = useRef(null);
-  const mapRef = useRef<any | null>(null);
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
   // Read-only display layer (all features)
   const displayLayerRef = useRef<L.GeoJSON | null>(null);
-  // Only layers inside this group are editable via the toolbar:
-  const editableGroupRef = useRef<L.FeatureGroup | null>(null);
 
+  // Editing Key ref
+  const editingKeyRef = useRef<string | null>(null); 
+
+
+  // Popup & selection state
   const [popUpState, setPopUpState] = useState<boolean>(false);
-
   const parentFileIdRef = useRef<string | null>(null);
   const popupRef = useRef<L.Popup | null>(null);
-
   const isEditingRef = useRef(false);
+  const [isEditingUI, setIsEditingUI] = useState(false);
+
   const lastHighlightedRef = useRef<L.Layer | null>(null);
   const attachToIdRef = useRef<string | null>(null);
 
+  const selectedEditIdRef = useRef<string | null>(null);
+  const editSessionActiveRef = useRef(false);
+  const pendingAddRef = useRef<{
+    mode: "attach" | "standalone";
+    parentId?: string;
+    layerId?: string | null;  
+    fileId?: string | null;    
+  } | null>(null);
 
 
-  //** HELPERS  */
+
+// ==================
+// HELPERS
+// ==================
   async function saveEditsToOriginalKMZ(updates: any[]) {
-    console.log("Edited features:", updates);
-
     try {
-      const response = await axios.patch("http://localhost:3000/features/saveEdit", {
-        updates: updates,
-      }, {
-        headers: {
-          "Content-Type": "application/json",
-        }
-      });
-
+      const response = await axios.patch(
+        "http://localhost:3000/features/saveEdit",
+        { updates },
+        { headers: { "Content-Type": "application/json" } }
+      );
       return response.data;
     } catch (err) {
       console.error("Failed to save edits:", err);
     }
   }
 
-  function isEditedEvent(evt: L.LeafletEvent): evt is L.DrawEvents.Edited {
-    return !!(evt as any)?.layers?.eachLayer;
+  function setEditingUI(key: string | null) {
+    const display = displayLayerRef.current!;
+    setEditing(display, editingKeyRef, key);  
+    setIsEditingUI(!!key);                    
   }
 
-  /** ================================ */
+  function toggleEditUI(layer: any) {
+    const key = getKey(layer);
+    if (!key) return;
+    const next = editingKeyRef.current === key ? null : key;
+    setEditingUI(next);
+  }
 
+  function onDoneEdit() {
+    setEditingUI(null); 
+  }
+
+  async function onSaveEdit() {
+    try { await saveCurrentEditByKey(); }
+    finally { setEditingUI(null); }
+  }
+  
+
+  function onCancelEdit() {
+    setEditingUI(null);
+    if (parentFileIdRef.current) {
+      window.dispatchEvent(new CustomEvent("kmz:changed", { detail: { fileId: parentFileIdRef.current } }));
+    }
+  }
+
+  function getLayersForKey(key: string) {
+    const display = displayLayerRef.current!;
+    const out: any[] = [];
+    display.eachLayer((lyr: any) => {
+      const gj = lyr?.toGeoJSON?.();
+      const id = lyr?.feature?.id ?? gj?.id;
+      const pid = gj?.properties?.parentId ?? lyr?.feature?.properties?.parentId;
+      if (id === key || pid === key) out.push(lyr);
+    });
+    return out;
+  }
+  
+  async function saveCurrentEditByKey() {
+    const key = editingKeyRef.current;
+    if (!key) return;
+    const layers = getLayersForKey(key);
+    if (!layers.length) return;
+  
+    const first = layers[0].toGeoJSON();
+    const props = first.properties ?? {};
+    const parentId = first?.properties?.parentId;
+    const originalType = first?.properties?.originalType;
+  
+    if (parentId && originalType === "MultiLineString") {
+      const siblings = layers.map((l: any) => l.toGeoJSON());
+      const coords = siblings
+        .sort((a, b) => (a.properties?.childIndex ?? 0) - (b.properties?.childIndex ?? 0))
+        .map((s) => s.geometry.coordinates);
+  
+      await saveEditsToOriginalKMZ([
+        { type: "Feature", id: parentId, properties: { ...props },
+          geometry: { type: "MultiLineString", coordinates: coords } }
+      ]);
+    } else {
+      const target = layers.find((l: any) => {
+        const gj = l.toGeoJSON();
+        const fid = l.feature?.id ?? gj?.id;
+        return fid === key;
+      }) ?? layers[0];
+  
+      const gj = target.toGeoJSON();
+      await saveEditsToOriginalKMZ([
+        { type: "Feature", id: (target.feature?.id ?? gj.id),
+          properties: gj.properties ?? {}, geometry: gj.geometry }
+      ]);
+    }
+  
+    if (parentFileIdRef.current) {
+      window.dispatchEvent(new CustomEvent("kmz:changed", { detail: { fileId: parentFileIdRef.current } }));
+    }
+  }
+  
+  
+
+// ==================
+// INIT
+// ==================
   useEffect(() => {
-
     if (!elRef.current || mapRef.current) return;
 
     const bounds = L.latLngBounds(L.latLng(-85, -180), L.latLng(85, 180));
-
     const map = L.map(elRef.current, {
       center: [0, 0],
       zoom: 2,
@@ -96,7 +167,6 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
       maxBoundsViscosity: 1.0,
       worldCopyJump: true,
     });
-
     mapRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -105,266 +175,296 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
       maxZoom: 19,
     }).addTo(map);
 
-    const editableGroup = new L.FeatureGroup();
-    editableGroupRef.current = editableGroup;
-    map.addLayer(editableGroup);
-    console.log(editableGroup);
-
-    const drawControl = new L.Control.Draw({
-      draw: {
-        marker: false,
-        circle: false,
-        circlemarker: false,
-        polyline: false,
-        polygon: false,
-        rectangle: false,
-      },
-      edit: { featureGroup: editableGroup },
+// ==========================
+// TOOLBAR INIT (GEOMAN)
+// ==========================
+    map.pm.addControls({
+      position: "topleft",
+      drawMarker: false,
+      drawPolyline: false,
+      drawPolygon: false,
+      drawRectangle: false,
+      editMode: false,
+      dragMode: false,
+      removalMode: false,
     });
-    map.addControl(drawControl);
 
-    // =====================================
-    /** EVENT LISTENERS FOR EDIT  */
-    // =====================================
+// ==========================
+// GLOBAL OPTIONS (SNAP/CONSTRAINTS)
+// ==========================
+    map.pm.setGlobalOptions({
+      snappable: true,
+      snapDistance: 20,
+    });
 
-    
-    //// =====================================
-    //  Check Edit Start
+// ==================
+// EVENTS (GEOMAN)
+// ==================
 
-    map.on("draw:editstart", () => {
-      isEditingRef.current = true;
-      map.doubleClickZoom.disable();
+// ==========================
+// GLOBAL EDIT MODE TOGGLE (draw:editstart/stop equivalent)
+// ==========================
+    map.on("pm:globaleditmodetoggled", (e: any) => {
+      isEditingRef.current = !!e.enabled;
+      if (e.enabled) map.doubleClickZoom.disable();
+      else map.doubleClickZoom.enable();
       map.closePopup();
     });
 
-    //// =====================================
-    //  Check Edit Stop
+// ==========================
+// PER-LAYER EDIT EVENT (vertex drag end, etc.)
+// ==========================
+map.on("pm:edit", async (e: any) => {
+  const lyr = e.layer as any;
+  const gj = lyr?.toGeoJSON?.();
+  if (!gj?.geometry) return;
 
-    map.on("draw:editstop", () => {
-      isEditingRef.current = false;
-      map.doubleClickZoom.enable();
-    });
+  const parentId = gj?.properties?.parentId;
+  const originalType = gj?.properties?.originalType;
 
-
-    //// =====================================
-    //  Check If Event is in Edit Mode
-
-    map.on("draw:edited", async (evt) => {
-      if (!isEditedEvent(evt)) return;
-
-      const edited: L.Layer[] = [];
-      evt.layers.eachLayer((lyr: L.Layer) => edited.push(lyr));
-
-      const updates = edited.map((l: any) => {
-        const gj = l.toGeoJSON?.();
-        if (!gj?.geometry) return null;
-        const id = l.feature?.id ?? gj.id;
-        if (!id) return null;
-        const props = l.feature?.properties ?? gj.properties ?? {};
-        return { type: "Feature", id, properties: props, geometry: gj.geometry };
-      }).filter(Boolean) as any[];
-
-
-      if (updates.length) {
-        try {
-          await saveEditsToOriginalKMZ(updates);
-          // 🔔 tell Floating to refresh map view
-          if (parentFileIdRef.current) {
-            window.dispatchEvent(new CustomEvent("kmz:changed", {
-              detail: { fileId: parentFileIdRef.current }
-            }));
-          }
-        } catch (err) {
-          console.error("Failed to save edits:", err);
-        }
-      }
-
-      
-
-      const eg = editableGroupRef.current!;
+  try {
+    if (parentId && originalType === "MultiLineString") {
       const display = displayLayerRef.current!;
+      const siblings: any[] = [];
+      display.eachLayer((l: any) => {
+        const s = l?.toGeoJSON?.();
+        if (s?.properties?.parentId === parentId) siblings.push(s);
+      });
+      const coords = siblings
+        .sort((a,b)=>(a.properties?.childIndex ?? 0) - (b.properties?.childIndex ?? 0))
+        .map((s)=>s.geometry.coordinates);
 
-      edited.forEach((l: any) => {
-        eg.removeLayer(l);                      // <-- remove from edit group
-        display.addLayer(l);                    // <-- back to display
-        l.setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 }); // base style
+      await axios.patch("http://localhost:3000/features/saveEdit", {
+        updates: [{
+          id: parentId,
+          geometry: { type: "MultiLineString", coordinates: coords },
+        }],
+      });
+    } else {
+      const fid = lyr.feature?.id ?? gj.id;
+      await axios.patch("http://localhost:3000/features/saveEdit", {
+        updates: [{
+          id: fid,
+          geometry: gj.geometry,   
+        }],
+      });
+    }
+
+    const fileId = lyr?.feature?.properties?.fileId ?? parentFileIdRef.current;
+    if (fileId) {
+      window.dispatchEvent(new CustomEvent("kmz:changed", { detail: { fileId } }));
+    }
+  } catch (err) {
+    console.error("Failed to save edits:", err);
+  }
+});
+
+
+// ==========================
+// CREATE NEW GEOMETRY (programmatic draw OR toolbar)
+// ==========================
+map.on("pm:create", async (e: any) => {
+  const map = mapRef.current!;
+  const display = displayLayerRef.current!;
+  const layer = e.layer as any;
+  const gj = layer.toGeoJSON?.();
+  const newGeom = gj?.geometry;
+  const intent = pendingAddRef.current;
+
+  // temp visual for what user just drew
+  (layer as any).setStyle?.({ color: "#1e90ff", weight: 4, opacity: 0.9 });
+
+  // default: we will remove temp layer after this op
+  let keepLayer = false;
+
+  try {
+    if (!newGeom || !intent) {
+      // No intent (e.g., user clicked Draw from toolbar with no popup context) –
+      // keep the temp layer by adding it into display for now.
+      display.addLayer(layer);
+      keepLayer = true;
+      return;
+    }
+
+    if (intent.mode === "attach") {
+      let nextIdx = 0;
+      display.eachLayer((lyr: any) => {
+        const p = lyr?.feature?.properties;
+        if (p?.parentId === intent.parentId) {
+          const i = (p.childIndex ?? -1) + 1;
+          if (i > nextIdx) nextIdx = i;
+        }
+      });
+
+      const optimisticChild: GeoJSON.Feature = {
+        type: "Feature",
+        id: `${intent.parentId}::opt-${Date.now()}`, // temporary id; server refresh will replace
+        properties: {
+          parentId: intent.parentId,
+          childIndex: nextIdx,
+          originalType: "MultiLineString",
+          // keep context so your popup/edit logic works immediately:
+          fileId: intent.fileId ?? null,
+          layer_id: undefined, // optional for lines; not used on attach
+          name: `segment ${nextIdx + 1}`,
+        },
+        geometry: newGeom, // the drawn LineString
+      };
+      
+      display.addData(optimisticChild);
+
+
+      await axios.patch("http://localhost:3000/features/attach", {
+        id: intent.parentId,
+        geometry: newGeom,
+        mode: "collect",
       });
 
       
-    });
-
-
-    //// =====================================
-    //  Check Deleted Event is Called
-
-    // PLEASE FIX THIS
-    map.on("draw:deleted", async (evt: any) => {
-      const removed: L.Layer[] = [];
-      evt.layers.eachLayer((lyr: L.Layer) => removed.push(lyr));
+    } else if (intent.mode === "standalone") {
+      const { data } = await axios.post(
+        "http://localhost:3000/features/create",
+        {
+          layerId: intent.layerId ?? undefined,
+          fileId:  intent.layerId ? undefined : intent.fileId,
+          geometry: newGeom,
+          properties: {}, 
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
     
-      const ids = removed.map((l: any) => l.feature?.id).filter(Boolean);
-      if (!ids.length) return;
+      const feature: GeoJSON.Feature = {
+        type: "Feature",
+        id: data.id,                           
+        properties: {
+          layer_id: intent.layerId ?? null,   
+          fileId: intent.fileId ?? null,
+          name: data.properties?.name ?? "New point",
+        },
+        geometry: newGeom,
+      };
     
+      // This will call your onEachFeature, styling, etc.
+      display.addData(feature);
+    }
+
+    // SUCCESS 
+    if (intent.fileId) {
+      window.dispatchEvent(
+        new CustomEvent("kmz:changed", { detail: { fileId: intent.fileId } })
+      );
+    } else {
+      console.warn("Create/Attach succeeded but no fileId to refresh");
+    }
+
+
+  } catch (err: any) {
+    console.error("Create/Attach failed:", err?.response?.status, err?.response?.data || err);
+    // On failure: keep the temp layer so the user sees what failed
+    keepLayer = true;
+  }  finally {
+    if (!keepLayer && map.hasLayer(layer)) {
+      map.removeLayer(layer); // remove the TEMP draw layer
+    }
+    pendingAddRef.current = null;
+    attachToIdRef.current = null;
+    try { map.pm.disableDraw(e.shape); } catch {}
+  }
+});
+
+
+
+
+// ==========================
+// DELETIONS (removalMode)
+// ==========================
+    map.on("pm:remove", async (e: any) => {
+      const lyr = e.layer as any;
+      const id = lyr?.feature?.id;
+      if (!id) return;
       try {
-        
-  
+
+        // Problems with this 
+        // TODO: call your delete endpoint here when available
+        // await axios.delete(`http://localhost:3000/features/${id}`)
+        if (parentFileIdRef.current) {
+          window.dispatchEvent(
+            new CustomEvent("kmz:changed", { detail: { fileId: parentFileIdRef.current } })
+          );
+        }
       } catch (err) {
         console.error("Failed to delete features:", err);
       }
     });
 
-
-    //// =====================================
-    /** Check if new Polygon Event is Called  */
-    map.on("draw:created",  async (e : any) => {
-
-      const map = mapRef.current!;
-      const display = displayLayerRef.current!;
-
-      const layer : L.Layer = e.layer;
-
-      (layer as any).setStyle?.({ color: "#ff7800", weight: 4.0, opacity: 0.9 });
-
-      const parentId = attachToIdRef.current;
-      if (!parentId) return;
-
-      const newGeom = e.layer.toGeoJSON().geometry;
-
-      // Not in display
-      if (!display.hasLayer(layer)) {
-        display.addLayer(layer);
-
-        // Attach fetch call
-        try {
-          const response = await axios.patch("http://localhost:3000/features/attach", {
-            id: parentId,
-            geometry: newGeom,
-            mode: "collect"
-          }, {
-            headers: {
-              "Content-Type": "application/json",
-            }
-          });
-          
-
-
-          // Could be bloat ware but it works?
-          // It was all for this can we check???
-          const layers = response.data?.updatedFeatureCollection ?? [];
-          const childrenLayer: Children[] = layers.map((l: any) => {
-            return {
-              id: l.id,
-              name: l.name,
-              isChecked: true,
-            };
-          });
-          const fc = buildFC(childrenLayer, layers);
-          handleGeoJSON?.(fc);
-
-          // It was all for this can we check???
-
-          display.removeLayer(layer); 
-          requestRefresh?.(parentFileIdRef.current ?? undefined); 
-          console.log("Successfully created geometry", response.data);
-
-
-          
-         
-        } catch (e : any ){ 
-          if (axios.isAxiosError(e)) {
-            console.error("Request failed:", e.response?.status, e.response?.data);
-          } else {
-            console.error("Unexpected error:", e);
-          }
-        }
-        
-        attachToIdRef.current = null; 
-      }
-
-      
-      
-    })
-
-
-    //// =====================================
-    /** Check if Leaflet Popup is closed  */
-    map.on("popupclose", () => {
-      const lyr = lastHighlightedRef.current;
-      if (!lyr) return;
-
-      const eg = editableGroupRef.current!;
-      if (!eg.hasLayer(lyr)) {
-        (lyr as any).setStyle?.({ color: "#ff7800", weight: 4, opacity: 0.8 });
-      }
-
-      lastHighlightedRef.current = null;
-      setPopUpState(false);
-    });
-
-    popupRef.current = L.popup({
-      closeButton: false,
-      autoPan: true,
-      className: "choice-popup", // optional for custom styling
-    });
-
-
-    //// =====================================
-    /** Check if Click anywhere in map */
+// ==========================
+// POPUP UX
+// ==========================
     map.on("click", () => map.closePopup());
+
+    popupRef.current = L.popup({ closeButton: false, autoPan: true, className: "choice-popup" });
 
     return () => {
       map.remove();
       mapRef.current = null;
-      editableGroupRef.current = null;
       displayLayerRef.current = null;
       popupRef.current = null;
     };
   }, []);
 
-
-  /** Handle Map */
-  const activeDrawerRef = useRef<L.Draw.Feature | null>(null);
-
-  function addGeometry(geoType: "point" | "line" | "polygon") {
-    console.log(geoType);
+// ==================
+// DRAWING AND GEOMETRY HEWLPERS  
+// ==================
+  function addGeometry(geoType: "point" | "line" ) {
+    console.log(`Added Geometry ${geoType}`)
     const map = mapRef.current;
     if (!map) return;
-
-    activeDrawerRef.current?.disable();
-
-    let drawer: L.Draw.Feature;
-    const shapeOptions = {color: "#1e90ff", weight: 4, opacity: 0.9};
-
-    switch(geoType) {
-      case "point":
-        drawer = new L.Draw.Marker(map, {});
-        break;
-      case "line":
-        drawer = new L.Draw.Polyline(map, { shapeOptions });
-        break;
-      case "polygon":
-        drawer = new L.Draw.Polygon(map, { shapeOptions });
-        break;
-      default:
-        return;
-     
-    }
-
-    activeDrawerRef.current = drawer;
-    drawer.enable();
-    
+    const shape = geoType === "point" ? "Marker" : "Line";
+    map.pm.enableDraw(shape as any, { snappable: true });
   }
 
-  
+// ==================
+// RENDER GEOJSON TO MAP
+// ==================
+// ==========================
+// MULTILINESTRING EXPLODE HELPER (render-only)
+// ==========================
+function explodeMultiLineForRender(fc: FeatureCollection): FeatureCollection {
+  const out: FeatureCollection = { type: "FeatureCollection", features: [] as any[] };
+  for (const f of fc.features ?? []) {
+    const g: any = (f as any).geometry;
+    if (g?.type === "MultiLineString") {
+      const lines: number[][][] = g.coordinates;
+      lines.forEach((coords, idx) => {
+        out.features.push({
+          type: "Feature",
+          id: `${(f as any).id}::${idx}`,
+          properties: {
+            ...(f as any).properties,
+            parentId: (f as any).id,
+            childIndex: idx,
+            originalType: "MultiLineString",
+            name: `${(f as any).properties?.name ?? (f as any).id} (part ${idx + 1})`,
+          },
+          geometry: { type: "LineString", coordinates: coords },
+        });
+      });
+    } else {
+      out.features.push(f as any);
+    }
+  }
+  return out;
+}
 
 
 
-  /** */
-  function handleGeoJSON(fc: FeatureCollection) {
+function handleGeoJSON(fc: FeatureCollection) {
     const map = mapRef.current!;
-    console.log(`FC: `, fc);
-
     if (!map || !fc || !Array.isArray(fc.features)) return;
+
+    // Explode MultiLineString -> 
+    fc = explodeMultiLineForRender(fc);
+
     map.invalidateSize();
 
     if (displayLayerRef.current) {
@@ -372,38 +472,25 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
       displayLayerRef.current = null;
     }
 
-    const style = { color: "#ff7800", weight: 4, opacity: 0.8 };
+    const style = COLORS.base as L.PathOptions;
 
-    // Instantiate Map
     const display = L.geoJSON(fc as any, {
       style,
       pointToLayer: (_feature, latlng) =>
         L.circleMarker(latlng, {
           radius: 6,
-          color: style.color,
+          color: (style as any).color,
           weight: 2,
           fillOpacity: 0.7,
         }),
       filter: (f) => !!f?.geometry,
       onEachFeature: (_f, lyr: any) => {
         lyr.on("click", (e: L.LeafletMouseEvent) => {
-
-          // ============================
-          // Refresh Checks 
-          // ============================
           L.DomEvent.stop(e);
           e.originalEvent?.stopPropagation?.();
+          if (isEditingRef.current) return; // ignore clicks while in global edit
 
-          if (isEditingRef.current) return;
-
-
-          
-          
-          // ============================
-          // Leaflet Layers
-          // ============================
-          const layer = e.target as L.Layer;
-          const eg = editableGroupRef.current!;
+          const layer = e.target as L.Layer & { feature?: any };
           const display = displayLayerRef.current!;
           const map = mapRef.current!;
           const popup = (popupRef.current ??= L.popup({
@@ -413,140 +500,151 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
             offset: L.point(0, -8),
           }));
 
-          //console.log(layer);
-          //console.log(popUpState);
-
+          // capture ids for subsequent actions
           attachToIdRef.current = (layer as any).feature?.id ?? null;
           parentFileIdRef.current =
             (layer as any).feature?.properties?.fileId ??
             (layer as any).feature?.properties?.layer_id ??
             null;
 
+          // highlight toggle
+          setPopUpState((prev) => {
+            const next = !prev;
+            if (next) {
+              applyStyle(layer, "select");
+              (layer as any).bringToFront?.();
+              lastHighlightedRef.current = layer;
+            } else {
+              const key = getKey(layer);
+              if (key && editingKeyRef.current === key) applyStyle(layer, "edit");
+              else applyStyle(layer, "base");
+            }
+            return next;
+          });
 
-          // ============================
-          // FEATURE HIGHLIGHTER
-          // ============================
+          // reinforce on popup lifecycle
+          layer.on("popupopen", () => applyStyle(layer, "select"));
+          layer.on("popupclose", () => {
+            const key = getKey(layer);
+            if (key && editingKeyRef.current === key) applyStyle(layer, "edit");
+            else applyStyle(layer, "base");
+          });
 
-          if (eg.hasLayer(layer)) {
+          // mount React UI inside Leaflet popup
+          const container = document.createElement("div");
+          popup.setLatLng(e.latlng).setContent(container).openOn(map);
+          const root = createRoot(container);
 
-            // Remove from Edit layer, Add Featue back to display
-            eg.removeLayer(layer);
-            display.addLayer(layer);
-            if (!display.hasLayer(layer)) display.addLayer(layer);
-            (layer as any).setStyle?.({
-              color: "#ff7800",
-              weight: 4,
-              opacity: 0.8,
-            });
-          } else {
+          // Render front end via created root div
+          root.render(
 
-            // Else the selected feature is called for Edit or Add Geometry
-
-            // Popup Color State 
-            // Check  For Click Features
-            setPopUpState((prev) => {
-              const next = !prev; // flip
-              if (next) {
-                (layer as any).setStyle?.({
-                  color: "#AE75DA",
-                  weight: 6,
-                  opacity: 0.9,
-                });
-                (layer as any).bringToFront?.();
-                lastHighlightedRef.current = layer;
-              } else {
-                (layer as any).setStyle?.({
-                  color: "#ff7800",
-                  weight: 4,
-                  opacity: 0.8,
-                });
-              }
-
-              return next;
-            }); 
-
-
-            // Popup Event Listener 
-            layer.on("popupopen", () => {
-              (layer as any).setStyle?.({
-                color: "#AE75DA",
-                weight: 4,
-                opacity: 0.8,
-              });
-            });
-
-            layer.on("popupclose", () => {
-              (layer as any).setStyle?.({
-                color: "#ff7800",
-                weight: 6,
-                opacity: 0.9,
-              });
-            });
-
-            // ================================
-            // HANDLE POPUP UI / LOGIC
-            // ================================
-
-            const container = document.createElement("div"); 
-
-            popup.setLatLng(e.latlng).setContent(container).openOn(map);
-
-            const root = createRoot(container);
-            root.render(
-              <PopupUI
+            <PopupUI
                 onAddGeometry={(t) => {
-                  attachToIdRef.current = (layer as any).feature?.id ?? null;
+                  const f = (layer as any).feature;
+                  const featureId = f?.id ?? null;
+
+                  const p = f?.properties ?? {};
+                  const fileId = p.fileId ?? null;
+                  const layerId = p.layer_id ?? null;
+                  const parentId = p.parentId ?? featureId; 
+
+                  console.log(`
+                    FILEID = ${fileId} \n
+                    LAYER = ${layerId} \n
+                    PARENT = ${parentId}
+                  `)
+
+
+                  parentFileIdRef.current = fileId;
+
+                  if (t === "point") {
+                    // Standalone point
+                    console.log("point");
+                    pendingAddRef.current = { mode: "standalone", layerId, fileId }
+                  } else {
+                    // Line/Polygon attach to the selected feature (parent-aware)
+                    console.log("line");
+                    pendingAddRef.current = { mode: "attach", parentId, fileId };
+                  }
+                
                   addGeometry(t);
                   map.closePopup();
                 }}
                 onEdit={() => {
                   map.closePopup();
-                  display.removeLayer(layer);
-                  eg.addLayer(layer);
-                  (layer as any).setStyle?.({
-                    color: "#1e90ff",
-                    weight: 6,
-                    opacity: 0.9,
-                  });
+                  toggleEditUI(layer);
                 }}
               />
-            )
 
-            map.once("popupclose", () => {
-              root.unmount();
-            });
 
-            // ===============================
-            // EVENM LISTENERS
-            // ================================
+          );
             
-
-            
-          }
+          map.once("popupclose", () => root.unmount());
         });
       },
     }).addTo(map);
 
     displayLayerRef.current = display;
 
-    // Map Re View
-    const bounds = display.getBounds();
-    if (bounds.isValid()) {
-      map.flyToBounds(bounds, {
-        padding: [20, 20],
-        maxZoom: 17,
-        animate: true,
-      });
-    } else {
-      console.log(`Invalid Bounds: ${bounds}`);
-      //map.setView([0, 0], 2);
+    const b = display.getBounds();
+    if (b.isValid()) {
+      map.flyToBounds(b, { padding: [20, 20], maxZoom: 17, animate: true });
     }
-  }
+}
+
+// ==================
+// RESET HIGHLIGHT ON POPUP CLOSE
+// ==================
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const onClose = () => {
+      const lyr = lastHighlightedRef.current;
+      if (!lyr) return;
+      const key = getKey(lyr);
+      if (key && editingKeyRef.current === key) applyStyle(lyr, "edit");
+      else applyStyle(lyr, "base");
+      lastHighlightedRef.current = null;
+      setPopUpState(false);
+    };
+    map.on("popupclose", onClose);
+    return () => { map.off("popupclose", onClose); };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && editingKeyRef.current) {
+        setEditingUI(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [])
 
   return (
     <>
       <Floating handleGeoJSON={handleGeoJSON} />
       <div ref={elRef} style={{ height: "100vh", width: "100vw" }} />
+      {isEditingUI && (
+          <div style={{
+            position: "absolute",
+            zIndex: 1000,
+            left: 12,
+            bottom: 12,
+            display: "flex",
+            gap: 8,
+            background: "white",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: "8px 10px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
+          }}> 
+            <button onClick={onSaveEdit}>Save</button>
+            <button onClick={onCancelEdit}>Cancel</button>
+          </div>
+        )}
     </>
   );
 }

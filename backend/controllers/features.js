@@ -1,4 +1,5 @@
 import { PGISPool } from "../database.js";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * @param {string[]} ids - Array of feature UUIDs
@@ -103,3 +104,27 @@ export async function addGeometryToFeature(id, newGeometry, mode) {
   }
 }
 
+export async function createFeature(layerId, geometry, properties = {}) {
+  const client = await PGISPool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const id = uuidv4();
+    await client.query(
+      `INSERT INTO "FEATURES" (id, layer_id, geom, props)
+       VALUES ($1, $2,
+         ST_SetSRID(ST_Force2D(ST_GeomFromGeoJSON($3)), 4326),
+         $4
+       )`,
+      [id, layerId, JSON.stringify(geometry), JSON.stringify(properties)]
+    );
+
+    await client.query("COMMIT");
+    return { id, layerId, geometry, properties };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

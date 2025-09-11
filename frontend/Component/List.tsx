@@ -94,6 +94,8 @@ export const List = ({
           detail: { fileId: wasOpen ? null : openLayer }
         })
       );
+
+      
     } catch (error) {
       console.log(error);
     }
