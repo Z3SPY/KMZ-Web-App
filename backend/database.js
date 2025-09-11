@@ -68,7 +68,8 @@ export async function storeToDB(
 
       for (const feature of layer.features) {
         await client.query(
-          `INSERT INTO "FEATURES" (id, layer_id, geom, props) VALUES ($1, $2, ST_Force3D(ST_GeomFromGeoJSON($3)), $4)`, //Handles conversion
+          `INSERT INTO "FEATURES" (id, layer_id, geom, props) 
+              VALUES ($1, $2, ST_SetSRID(ST_Force2D(ST_GeomFromGeoJSON($3)), 4326), $4)`, //Handles conversion
           [
             uuidv4(),
             layerId,

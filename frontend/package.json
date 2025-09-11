@@ -10,11 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@geoman-io/leaflet-geoman-free": "^2.18.3",
     "axios": "^1.11.0",
     "geojson-to-kml": "^0.0.1",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
+    "leaflet.pm": "^2.2.0",
     "multer": "^2.0.2",
     "ogr2ogr": "^6.0.1",
     "react": "^19.1.1",

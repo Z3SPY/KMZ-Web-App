@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { getFeatures, updateFeatures, addGeometryToFeature } from "../controllers/features.js";
+import { getFeatures, updateFeatures, addGeometryToFeature, createFeature } from "../controllers/features.js";
 import { PGISPool } from "../database.js";
 import { getFileDataFromLayerID } from "../controllers/files.js";
+import { getOrCreateDefaultLayer } from "../controllers/layers.js";
 
 export const featureRoutes = Router();
 
@@ -28,6 +29,40 @@ featureRoutes.patch("/saveEdit", async (req, res, next) => {
     next(e);
   }
 });
+
+
+featureRoutes.post("/create", async (req, res, next) => {
+  try {
+    const { layerId, fileId, geometry, properties = {} } = req.body || {};
+    if (!geometry || !geometry.type || !geometry.coordinates) {
+      return res.status(400).json({ ok: false, error: "Missing geometry" });
+    }
+
+    // resolve target layer
+    let targetLayerId = layerId;
+    if (!targetLayerId) {
+      if (!fileId) {
+        return res.status(400).json({ ok: false, error: "Provide layerId or fileId" });
+      }
+      targetLayerId = await getOrCreateDefaultLayer(fileId);
+    }
+
+    // 🔑 call the query
+    const feature = await createFeature(targetLayerId, geometry, properties);
+
+    // same refresh pattern as /attach
+    const fc = await getFileDataFromLayerID(targetLayerId);
+    if (!fc) {
+      return res.status(404).json({ ok: false, error: `No file found for layer_id=${targetLayerId}` });
+    }
+
+    res.json({ ok: true, feature, updatedFeatureCollection: fc });
+  } catch (e) {
+    next(e);
+  }
+});
+
+
 
 
 featureRoutes.patch("/attach", async (req, res, next) => {
