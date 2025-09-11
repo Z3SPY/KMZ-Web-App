@@ -82,21 +82,20 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
     setEditingUI(next);
   }
 
-  function onDoneEdit() {
-    setEditingUI(null); 
-  }
 
   async function onSaveEdit() {
-    try { await saveCurrentEditByKey(); }
-    finally { setEditingUI(null); }
+    try {
+      await saveCurrentEditByKey();  
+      await reloadCurrentFile();     
+    } finally {
+      setEditingUI(null);
+    }
   }
   
 
   function onCancelEdit() {
+    reloadCurrentFile();
     setEditingUI(null);
-    if (parentFileIdRef.current) {
-      window.dispatchEvent(new CustomEvent("kmz:changed", { detail: { fileId: parentFileIdRef.current } }));
-    }
   }
 
   function getLayersForKey(key: string) {
@@ -146,11 +145,66 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
       ]);
     }
   
-    if (parentFileIdRef.current) {
-      window.dispatchEvent(new CustomEvent("kmz:changed", { detail: { fileId: parentFileIdRef.current } }));
-    }
+    
   }
+
+  async function reloadCurrentFile() {
+    const display = displayLayerRef.current;
+    if (!display) return;
   
+    // get current layers
+    const layerIds = new Set<string>();
+    display.eachLayer((lyr: any) => {
+      const lid = lyr?.feature?.properties?.layer_id;
+      if (lid) layerIds.add(lid);
+    });
+    if (layerIds.size === 0) return;
+  
+    // Pull features from features controller
+    const results = await Promise.all(
+      Array.from(layerIds).map(async (lid) => {
+        const { data } = await axios.get(
+          `http://localhost:3000/features/${lid}?t=${Date.now()}`
+        );
+        return { lid, data };
+      })
+    );
+  
+    // Normalize into a single FeatureCollection
+    const fileId = parentFileIdRef.current ?? null;
+    const fc: FeatureCollection = { type: "FeatureCollection", features: [] };
+  
+    for (const { lid, data } of results) {
+      const arr: any[] = Array.isArray(data) ? data : (data?.features ?? []);
+      for (const f of arr) {
+        if (!f) continue;
+
+        const featureId = f.id ?? f.feature_id ?? f?.properties?.id;
+  
+        let geometry = f.geometry ?? f.geom ?? null;
+        if (typeof geometry === "string") {
+          try { geometry = JSON.parse(geometry); } catch {}
+        }
+  
+        // properties could be in f.properties or f.props
+        const baseProps = (f.properties ?? f.props ?? {}) as Record<string, any>;
+  
+        if (!geometry || !geometry.type) continue;
+  
+        fc.features.push({
+          type: "Feature",
+          id: featureId,
+          geometry,
+          properties: { ...baseProps, fileId, layer_id: lid },
+        });
+      }
+    }
+  
+    // (Optional) sanity log
+    console.log("Built FC with", fc.features.length, "features");
+  
+    handleGeoJSON(fc);
+  }
   
 
 // ==================
@@ -214,51 +268,14 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
 // ==========================
 // PER-LAYER EDIT EVENT (vertex drag end, etc.)
 // ==========================
-map.on("pm:edit", async (e: any) => {
+map.off("pm:edit"); 
+map.on("pm:edit", (e: any) => {
   const lyr = e.layer as any;
-  const gj = lyr?.toGeoJSON?.();
+  if (!lyr?.toGeoJSON) return;
+  const gj = lyr.toGeoJSON();
   if (!gj?.geometry) return;
-
-  const parentId = gj?.properties?.parentId;
-  const originalType = gj?.properties?.originalType;
-
-  try {
-    if (parentId && originalType === "MultiLineString") {
-      const display = displayLayerRef.current!;
-      const siblings: any[] = [];
-      display.eachLayer((l: any) => {
-        const s = l?.toGeoJSON?.();
-        if (s?.properties?.parentId === parentId) siblings.push(s);
-      });
-      const coords = siblings
-        .sort((a,b)=>(a.properties?.childIndex ?? 0) - (b.properties?.childIndex ?? 0))
-        .map((s)=>s.geometry.coordinates);
-
-      await axios.patch("http://localhost:3000/features/saveEdit", {
-        updates: [{
-          id: parentId,
-          geometry: { type: "MultiLineString", coordinates: coords },
-        }],
-      });
-    } else {
-      const fid = lyr.feature?.id ?? gj.id;
-      await axios.patch("http://localhost:3000/features/saveEdit", {
-        updates: [{
-          id: fid,
-          geometry: gj.geometry,   
-        }],
-      });
-    }
-
-    const fileId = lyr?.feature?.properties?.fileId ?? parentFileIdRef.current;
-    if (fileId) {
-      window.dispatchEvent(new CustomEvent("kmz:changed", { detail: { fileId } }));
-    }
-  } catch (err) {
-    console.error("Failed to save edits:", err);
-  }
+  try { applyStyle?.(lyr, "edit"); } catch {}
 });
-
 
 // ==========================
 // CREATE NEW GEOMETRY (programmatic draw OR toolbar)
@@ -320,7 +337,7 @@ map.on("pm:create", async (e: any) => {
         mode: "collect",
       });
 
-      
+
     } else if (intent.mode === "standalone") {
       const { data } = await axios.post(
         "http://localhost:3000/features/create",
@@ -502,10 +519,9 @@ function handleGeoJSON(fc: FeatureCollection) {
 
           // capture ids for subsequent actions
           attachToIdRef.current = (layer as any).feature?.id ?? null;
-          parentFileIdRef.current =
-            (layer as any).feature?.properties?.fileId ??
-            (layer as any).feature?.properties?.layer_id ??
-            null;
+
+          const fileId = (layer as any).feature?.properties?.fileId ?? null;
+          if (fileId) parentFileIdRef.current = fileId;
 
           // highlight toggle
           setPopUpState((prev) => {
@@ -595,33 +611,34 @@ function handleGeoJSON(fc: FeatureCollection) {
 // ==================
 // RESET HIGHLIGHT ON POPUP CLOSE
 // ==================
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const onClose = () => {
-      const lyr = lastHighlightedRef.current;
-      if (!lyr) return;
-      const key = getKey(lyr);
-      if (key && editingKeyRef.current === key) applyStyle(lyr, "edit");
-      else applyStyle(lyr, "base");
-      lastHighlightedRef.current = null;
-      setPopUpState(false);
-    };
-    map.on("popupclose", onClose);
-    return () => { map.off("popupclose", onClose); };
-  }, []);
+useEffect(() => {
+  const map = mapRef.current;
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && editingKeyRef.current) {
-        setEditingUI(null);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [])
+  const onClose = () => {
+    const lyr = lastHighlightedRef.current;
+    if (!lyr) return;
+    const key = getKey(lyr);
+    if (key && editingKeyRef.current === key) applyStyle(lyr, "edit");
+    else applyStyle(lyr, "base");
+    lastHighlightedRef.current = null;
+    setPopUpState(false);
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape" && editingKeyRef.current) {
+      setEditingUI(null);
+    }
+  };
+
+  if (map) map.on("popupclose", onClose);
+  window.addEventListener("keydown", onKeyDown);
+
+  return () => {
+    if (map) map.off("popupclose", onClose);
+    window.removeEventListener("keydown", onKeyDown);
+  };
+}, []);
+
 
   return (
     <>
