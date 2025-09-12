@@ -42,14 +42,13 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
   const lastHighlightedRef = useRef<L.Layer | null>(null);
   const attachToIdRef = useRef<string | null>(null);
 
-  const selectedEditIdRef = useRef<string | null>(null);
-  const editSessionActiveRef = useRef(false);
   const pendingAddRef = useRef<{
     mode: "attach" | "standalone";
     parentId?: string;
     layerId?: string | null;  
     fileId?: string | null;    
   } | null>(null);
+  const mutedLayersRef = useRef<any[]>([]);
 
 
 
@@ -71,17 +70,67 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
 
   function setEditingUI(key: string | null) {
     const display = displayLayerRef.current!;
-    setEditing(display, editingKeyRef, key);  
-    setIsEditingUI(!!key);                    
+    const map = mapRef.current!;
+  
+    // existing toggle
+    setEditing(display, editingKeyRef, key);
+    setIsEditingUI(!!key);
+  
+    // restore everything and remove any stray handles
+    if (!key) {
+      for (const lyr of mutedLayersRef.current) {
+        (lyr as any).options.pmIgnore = false;
+        (lyr as any).options.snapIgnore = false;     
+        lyr.pm?.disable?.();                        
+        lyr.setStyle?.({ opacity: 1 });
+      }
+      mutedLayersRef.current = [];
+      map.pm.setGlobalOptions({ snappable: true });
+      return;
+    }
+  
+    // isolate just the active feature
+    mutedLayersRef.current = [];
+    const activeKey = key;
+  
+    display.eachLayer((lyr: any) => {
+      const gj  = lyr?.toGeoJSON?.();
+      const id  = lyr?.feature?.id ?? gj?.id;
+      const pid = gj?.properties?.parentId ?? lyr?.feature?.properties?.parentId;
+      const isActive = id === activeKey || pid === activeKey;
+  
+      if (isActive) {
+        (lyr as any).options.pmIgnore = false;
+        (lyr as any).options.snapIgnore = true;     
+        lyr.pm?.enable?.({
+          snappable: false,                          
+          snapSelf: false, snapSegment: false, snapMiddle: false, snapVertex: false,
+          allowSelfIntersection: true                
+        });
+        lyr.bringToFront?.();
+      } else {
+        // fully neutralize non-active layers 
+        (lyr as any).options.pmIgnore = true;
+        (lyr as any).options.snapIgnore = true;      
+        lyr.pm?.disable?.();                        
+        lyr.setStyle?.({ opacity: 0.25 });
+        mutedLayersRef.current.push(lyr);
+      }
+    });
+  
+    // keep global snapping off during per-feature edit
+    map.pm.setGlobalOptions({ snappable: false });
   }
+
 
   function toggleEditUI(layer: any) {
-    const key = getKey(layer);
-    if (!key) return;
-    const next = editingKeyRef.current === key ? null : key;
+    const gj = layer?.toGeoJSON?.();
+    const fid = layer?.feature?.id ?? gj?.id;
+    const parentId = gj?.properties?.parentId;
+    const baseKey = parentId ?? fid;        
+    const next = editingKeyRef.current === baseKey ? null : baseKey;
     setEditingUI(next);
   }
-
 
   async function onSaveEdit() {
     try {
@@ -98,6 +147,9 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
     setEditingUI(null);
   }
 
+
+
+  // Multi String Edit fixes
   function getLayersForKey(key: string) {
     const display = displayLayerRef.current!;
     const out: any[] = [];
@@ -200,12 +252,35 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
       }
     }
   
-    // (Optional) sanity log
     console.log("Built FC with", fc.features.length, "features");
   
     handleGeoJSON(fc);
   }
-  
+
+  function syncFeatureGeometryFromLayer(lyr: any) {
+    const gj = lyr?.toGeoJSON?.();
+    if (!gj?.geometry) return;
+    lyr.feature ??= { type: "Feature", id: gj.id, properties: gj.properties ?? {}, geometry: gj.geometry };
+    lyr.feature.geometry = gj.geometry;
+    if (gj.properties) lyr.feature.properties = { ...(lyr.feature.properties ?? {}), ...gj.properties };
+    if (gj.id) lyr.feature.id = gj.id;
+  }
+
+  function dedupeByGeometry(fc: FeatureCollection): FeatureCollection {
+    const seen = new Set<string>();
+    const out: FeatureCollection = { type: "FeatureCollection", features: [] };
+    const keyOf = (g: any) =>
+      `${g.type}:${JSON.stringify(g.coordinates, (_k, v) => typeof v === "number" ? +v.toFixed(7) : v)}`;
+    for (const f of fc.features ?? []) {
+      if (!f?.geometry) continue;
+      const k = keyOf((f as any).geometry);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.features.push(f as any);
+    }
+    return out;
+  }
+
 
 // ==================
 // INIT
@@ -258,187 +333,200 @@ export default function Map({ requestRefresh }: { requestRefresh?: (id?: string)
 // ==========================
 // GLOBAL EDIT MODE TOGGLE (draw:editstart/stop equivalent)
 // ==========================
-    map.on("pm:globaleditmodetoggled", (e: any) => {
+    map.on("pm:globaleditmodetoggled", (e:any) => {
       isEditingRef.current = !!e.enabled;
-      if (e.enabled) map.doubleClickZoom.disable();
-      else map.doubleClickZoom.enable();
+      if (e.enabled) {
+        map.doubleClickZoom.disable();
+        map.pm.setGlobalOptions({ snappable: false });
+      } else {
+        map.doubleClickZoom.enable();
+        map.pm.setGlobalOptions({ snappable: true });
+      }
       map.closePopup();
     });
 
 // ==========================
 // PER-LAYER EDIT EVENT (vertex drag end, etc.)
 // ==========================
-map.off("pm:edit"); 
-map.on("pm:edit", (e: any) => {
-  const lyr = e.layer as any;
-  if (!lyr?.toGeoJSON) return;
-  const gj = lyr.toGeoJSON();
-  if (!gj?.geometry) return;
-  try { applyStyle?.(lyr, "edit"); } catch {}
-});
+    map.off("pm:edit"); 
+    map.on("pm:edit", (e: any) => {
+      console.log("editing", e.layer?.feature?.id, "snappable?", e.layer?.pm?.options?.snappable, "pmIgnore?", (e.layer as any)?.options?.pmIgnore);
+      syncFeatureGeometryFromLayer(e.layer);
+    });
+
+    map.off("pm:vertexdragend");
+    map.on("pm:vertexdragend", (e: any) => {
+      syncFeatureGeometryFromLayer(e.layer);
+    })
+
+    map.on("pm:markerdragend", (e:any) => {
+      if (e?.intersectionReset) {
+        console.warn("Geoman reset due to self-intersection", e.indexPath);
+      }
+    });
+    map.on("pm:layerreset", (e:any) => {
+      console.warn("Geoman reset layer coords (constraint hit)", e.shape);
+    });
+
 
 // ==========================
 // CREATE NEW GEOMETRY (programmatic draw OR toolbar)
 // ==========================
-map.on("pm:create", async (e: any) => {
-  const map = mapRef.current!;
-  const display = displayLayerRef.current!;
-  const layer = e.layer as any;
-  const gj = layer.toGeoJSON?.();
-  const newGeom = gj?.geometry;
-  const intent = pendingAddRef.current;
+    map.on("pm:create", async (e: any) => {
+      const map = mapRef.current!;
+      const display = displayLayerRef.current!;
+      const layer = e.layer as any;
+      const gj = layer.toGeoJSON?.();
+      const newGeom = gj?.geometry;
+      const intent = pendingAddRef.current;
 
-  // temp visual for what user just drew
-  (layer as any).setStyle?.({ color: "#1e90ff", weight: 4, opacity: 0.9 });
+      // temp visual for what user just drew
+      (layer as any).setStyle?.({ color: "#1e90ff", weight: 4, opacity: 0.9 });
 
-  // default: we will remove temp layer after this op
-  let keepLayer = false;
+      // default: we will remove temp layer after this op
+      let keepLayer = false;
 
-  try {
-    if (!newGeom || !intent) {
-      // No intent (e.g., user clicked Draw from toolbar with no popup context) –
-      // keep the temp layer by adding it into display for now.
-      display.addLayer(layer);
-      keepLayer = true;
-      return;
-    }
-
-    if (intent.mode === "attach") {
-      let nextIdx = 0;
-      display.eachLayer((lyr: any) => {
-        const p = lyr?.feature?.properties;
-        if (p?.parentId === intent.parentId) {
-          const i = (p.childIndex ?? -1) + 1;
-          if (i > nextIdx) nextIdx = i;
+      try {
+        if (!newGeom || !intent) {
+          // keep the temp layer by adding it into display for now.
+          display.addLayer(layer);
+          keepLayer = true;
+          return;
         }
-      });
 
-      const optimisticChild: GeoJSON.Feature = {
-        type: "Feature",
-        id: `${intent.parentId}::opt-${Date.now()}`, // temporary id; server refresh will replace
-        properties: {
-          parentId: intent.parentId,
-          childIndex: nextIdx,
-          originalType: "MultiLineString",
-          // keep context so your popup/edit logic works immediately:
-          fileId: intent.fileId ?? null,
-          layer_id: undefined, // optional for lines; not used on attach
-          name: `segment ${nextIdx + 1}`,
-        },
-        geometry: newGeom, // the drawn LineString
-      };
-      
-      display.addData(optimisticChild);
+        if (intent.mode === "attach") {
+          let nextIdx = 0;
+          display.eachLayer((lyr: any) => {
+            const p = lyr?.feature?.properties;
+            if (p?.parentId === intent.parentId) {
+              const i = (p.childIndex ?? -1) + 1;
+              if (i > nextIdx) nextIdx = i;
+            }
+          });
 
-
-      await axios.patch("http://localhost:3000/features/attach", {
-        id: intent.parentId,
-        geometry: newGeom,
-        mode: "collect",
-      });
-
-
-    } else if (intent.mode === "standalone") {
-      const { data } = await axios.post(
-        "http://localhost:3000/features/create",
-        {
-          layerId: intent.layerId ?? undefined,
-          fileId:  intent.layerId ? undefined : intent.fileId,
-          geometry: newGeom,
-          properties: {}, 
-        },
-        { headers: { "Content-Type": "application/json" } }
-      );
-    
-      const feature: GeoJSON.Feature = {
-        type: "Feature",
-        id: data.id,                           
-        properties: {
-          layer_id: intent.layerId ?? null,   
-          fileId: intent.fileId ?? null,
-          name: data.properties?.name ?? "New point",
-        },
-        geometry: newGeom,
-      };
-    
-      // This will call your onEachFeature, styling, etc.
-      display.addData(feature);
-    }
-
-    // SUCCESS 
-    if (intent.fileId) {
-      window.dispatchEvent(
-        new CustomEvent("kmz:changed", { detail: { fileId: intent.fileId } })
-      );
-    } else {
-      console.warn("Create/Attach succeeded but no fileId to refresh");
-    }
+          const optimisticChild: GeoJSON.Feature = {
+            type: "Feature",
+            id: `${intent.parentId}::opt-${Date.now()}`, // temporary id; server refresh will replace
+            properties: {
+              parentId: intent.parentId,
+              childIndex: nextIdx,
+              originalType: "MultiLineString",
+              // keep context so your popup/edit logic works immediately:
+              fileId: intent.fileId ?? null,
+              layer_id: undefined, // optional for lines; not used on attach
+              name: `segment ${nextIdx + 1}`,
+            },
+            geometry: newGeom, // the drawn LineString
+          };
+          
+          display.addData(optimisticChild);
 
 
-  } catch (err: any) {
-    console.error("Create/Attach failed:", err?.response?.status, err?.response?.data || err);
-    // On failure: keep the temp layer so the user sees what failed
-    keepLayer = true;
-  }  finally {
-    if (!keepLayer && map.hasLayer(layer)) {
-      map.removeLayer(layer); // remove the TEMP draw layer
-    }
-    pendingAddRef.current = null;
-    attachToIdRef.current = null;
-    try { map.pm.disableDraw(e.shape); } catch {}
-  }
-});
+          await axios.patch("http://localhost:3000/features/attach", {
+            id: intent.parentId,
+            geometry: newGeom,
+            mode: "collect",
+          });
+
+
+        } else if (intent.mode === "standalone") {
+          const { data } = await axios.post(
+            "http://localhost:3000/features/create",
+            {
+              layerId: intent.layerId ?? undefined,
+              fileId:  intent.layerId ? undefined : intent.fileId,
+              geometry: newGeom,
+              properties: {}, 
+            },
+            { headers: { "Content-Type": "application/json" } }
+          );
+        
+          const feature: GeoJSON.Feature = {
+            type: "Feature",
+            id: data.id,                           
+            properties: {
+              layer_id: intent.layerId ?? null,   
+              fileId: intent.fileId ?? null,
+              name: data.properties?.name ?? "New point",
+            },
+            geometry: newGeom,
+          };
+        
+          // This will call your onEachFeature, styling, etc.
+          display.addData(feature);
+        }
+
+        // SUCCESS 
+        if (intent.fileId) {
+          window.dispatchEvent(
+            new CustomEvent("kmz:changed", { detail: { fileId: intent.fileId } })
+          );
+        } else {
+          console.warn("Create/Attach succeeded but no fileId to refresh");
+        }
+
+
+      } catch (err: any) {
+        console.error("Create/Attach failed:", err?.response?.status, err?.response?.data || err);
+        // On failure: keep the temp layer so the user sees what failed
+        keepLayer = true;
+      }  finally {
+        if (!keepLayer && map.hasLayer(layer)) {
+          map.removeLayer(layer); // remove the TEMP draw layer
+        }
+        pendingAddRef.current = null;
+        attachToIdRef.current = null;
+        try { map.pm.disableDraw(e.shape); } catch {}
+      }
+    });
 
 
 
 
-// ==========================
-// DELETIONS (removalMode)
-// ==========================
+    // ==========================
+    // DELETIONS (removalMode)
+    // ==========================
     map.on("pm:remove", async (e: any) => {
       const lyr = e.layer as any;
       const id = lyr?.feature?.id;
       if (!id) return;
       try {
-
-        // Problems with this 
-        // TODO: call your delete endpoint here when available
-        // await axios.delete(`http://localhost:3000/features/${id}`)
         if (parentFileIdRef.current) {
           window.dispatchEvent(
             new CustomEvent("kmz:changed", { detail: { fileId: parentFileIdRef.current } })
           );
         }
-      } catch (err) {
-        console.error("Failed to delete features:", err);
-      }
+        } catch (err) {
+          console.error("Failed to delete features:", err);
+        }
     });
 
-// ==========================
-// POPUP UX
-// ==========================
-    map.on("click", () => map.closePopup());
+  // ==========================
+  // POPUP UX
+  // ==========================
+  map.on("click", () => map.closePopup());
+  popupRef.current = L.popup({ closeButton: false, autoPan: true, className: "choice-popup" });
 
-    popupRef.current = L.popup({ closeButton: false, autoPan: true, className: "choice-popup" });
+  return () => {
+    map.remove();
+    mapRef.current = null;
+    displayLayerRef.current = null;
+    popupRef.current = null;
+  };
 
-    return () => {
-      map.remove();
-      mapRef.current = null;
-      displayLayerRef.current = null;
-      popupRef.current = null;
-    };
-  }, []);
+// This is the end of use effect
+}, []);
 
 // ==================
 // DRAWING AND GEOMETRY HEWLPERS  
 // ==================
-  function addGeometry(geoType: "point" | "line" ) {
-    console.log(`Added Geometry ${geoType}`)
-    const map = mapRef.current;
-    if (!map) return;
-    const shape = geoType === "point" ? "Marker" : "Line";
-    map.pm.enableDraw(shape as any, { snappable: true });
-  }
+function addGeometry(geoType: "point" | "line" ) {
+  console.log(`Added Geometry ${geoType}`)
+  const map = mapRef.current;
+  if (!map) return;
+  const shape = geoType === "point" ? "Marker" : "Line";
+  map.pm.enableDraw(shape as any, { snappable: true });
+}
 
 // ==================
 // RENDER GEOJSON TO MAP
@@ -481,6 +569,7 @@ function handleGeoJSON(fc: FeatureCollection) {
 
     // Explode MultiLineString -> 
     fc = explodeMultiLineForRender(fc);
+    fc = dedupeByGeometry(fc);     
 
     map.invalidateSize();
 
@@ -502,6 +591,7 @@ function handleGeoJSON(fc: FeatureCollection) {
         }),
       filter: (f) => !!f?.geometry,
       onEachFeature: (_f, lyr: any) => {
+        (lyr as any).options.pmIgnore = false;
         lyr.on("click", (e: L.LeafletMouseEvent) => {
           L.DomEvent.stop(e);
           e.originalEvent?.stopPropagation?.();
@@ -538,6 +628,7 @@ function handleGeoJSON(fc: FeatureCollection) {
             return next;
           });
 
+          console.log(layer.feature);
           // reinforce on popup lifecycle
           layer.on("popupopen", () => applyStyle(layer, "select"));
           layer.on("popupclose", () => {
