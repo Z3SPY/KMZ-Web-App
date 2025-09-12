@@ -222,6 +222,8 @@ export default function Floating({ handleGeoJSON }: FloatingProps) {
       const fc = buildFC(childrenLayer, layers);
       setExportFC(fc);
 
+      console.log(fc);
+
       if (fc) {
         handleGeoJSON?.(fc);
       }
