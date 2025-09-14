@@ -26,6 +26,7 @@ featureRoutes.patch("/saveEdit", async (req, res, next) => {
     }
 
     const result = await updateFeatures(updates);
+
     const kmzInfo = await getKmzInfo(updates[0].id)
     const filePath = await makeKmzFile(kmzInfo[0].file_id)
     await upadateFileHash(kmzInfo[0].kmz_id, filePath).finally(() => {
@@ -43,7 +44,6 @@ featureRoutes.patch("/saveEdit", async (req, res, next) => {
 
   } catch (e) {
     next(e);
-  } finally {
   }
 });
 
