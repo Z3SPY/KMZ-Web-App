@@ -17,7 +17,7 @@ export const up = (pgm) => {
     id: { type: "uuid", notNull: true, primaryKey: true },
     name: { type: "text", notNull: true },
     region: { type: "text", notNull: true },
-    city: {type: "text", notNull: true}, 
+    city: { type: "text", notNull: true },
     postcode: { type: "text", notNull: false },
     country: { type: "text", notNull: true },
     uploadedAt: {
@@ -92,14 +92,16 @@ export const up = (pgm) => {
   });
 
   pgm.createTable("KMZ_INFO", {
-    id: {type: "uuid", primaryKey: true, notNull: true},
-    file_id: { type: "uuid", notNull: true, references: "FILES", /** // For Version Control */
-    onDelete: "CASCADE", onUpdate: "CASCADE" /**DELETE Corresponding FIles */},  
-    data: {type: "bytea", notNull: true}, // KMZ Files Here
-    size_bytes: {type: "bigint", notNull: true},
-    sha256: {type: "text", notNull: true, unique: true},
+    id: { type: "uuid", primaryKey: true, notNull: true },
+    file_id: {
+      type: "uuid", notNull: true, references: "FILES", /** // For Version Control */
+      onDelete: "CASCADE", onUpdate: "CASCADE" /**DELETE Corresponding FIles */
+    },
+    data: { type: "bytea", notNull: true }, // KMZ Files Here
+    size_bytes: { type: "bigint", notNull: true },
+    sha256: { type: "text", notNull: true, unique: true },
     content_type: { type: "text", notNull: true, default: "application/vnd.google-earth.kmz" },
-    uploaded_at:  { type: "timestamptz", notNull: true, default: pgm.func("current_timestamp") },
+    uploaded_at: { type: "timestamptz", notNull: true, default: pgm.func("current_timestamp") },
   });
 };
 
