@@ -4,9 +4,6 @@ import fs from "fs";
 import path from "path";
 import yazl from "yazl";
 
-
-
-
 function ensureArraySlot(parent, key, i) {
   let arr = parent[key];
   if (!arr) parent[key] = arr = [];
@@ -91,7 +88,7 @@ function createKMZ(kml, outPath, filename = "doc.kml") {
     const outStream = fs.createWriteStream(outPath);
 
     zipfile.addReadStreamLazy(filename, (cb) => {
-      cb(null, Readable.from([kml])); 
+      cb(null, Readable.from([kml]));
     });
 
     zipfile.outputStream
@@ -110,7 +107,7 @@ export async function inject(kmlFile, dbData, id) {
       jpath?.includes("Placemark") &&
       (name === "LineString" || name === "Point" || name === "Polygon" || name === "Placemark")
   };
-  
+
   const parser = new XMLParser(options);
   const kmlData = parser.parse(kmlFile);
 
@@ -141,9 +138,9 @@ export async function inject(kmlFile, dbData, id) {
                 findAndReplace(kmlData, feature_name, "LineString", counter++, coordText);
               }
             }
-          }  
+          }
         } else {
-          const G = features.geom;    
+          const G = features.geom;
           const t = G?.type;
           let counter = 0;
 

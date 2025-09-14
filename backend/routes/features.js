@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { getFeatures, updateFeatures, addGeometryToFeature, createFeature } from "../controllers/features.js";
-import { PGISPool } from "../database.js";
 import { getFileDataFromLayerID } from "../controllers/files.js";
 import { getOrCreateDefaultLayer } from "../controllers/layers.js";
+import { getKmzInfo, upadateFileHash } from "../controllers/kmzInfo.js";
+import { makeKmzFile } from "../controllers/download.js";
+import fs from "fs";
 
 export const featureRoutes = Router();
 
@@ -24,9 +26,24 @@ featureRoutes.patch("/saveEdit", async (req, res, next) => {
     }
 
     const result = await updateFeatures(updates);
+    const kmzInfo = await getKmzInfo(updates[0].id)
+    const filePath = await makeKmzFile(kmzInfo[0].file_id)
+    await upadateFileHash(kmzInfo[0].kmz_id, filePath).finally(() => {
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) {
+          console.error("Error deleting file:", unlinkErr);
+        } else {
+          console.log("File deleted successfully!");
+        }
+      })
+    })
+    console.log("KMZ ID: ", kmzInfo[0].kmz_id)
+
     res.json({ ok: true, ...result });
+
   } catch (e) {
     next(e);
+  } finally {
   }
 });
 
@@ -68,9 +85,9 @@ featureRoutes.post("/create", async (req, res, next) => {
 featureRoutes.patch("/attach", async (req, res, next) => {
   try {
 
-    const {id, geometry, mode} = req?.body;
+    const { id, geometry, mode } = req?.body;
     console.log(req.body);
-    if (!id || !geometry || geometry.coordinates.length === 0)  {
+    if (!id || !geometry || geometry.coordinates.length === 0) {
       console.log(req.body);
       return res.status(400).json({
         error: "Missing required values, unable to add geometry",
@@ -89,7 +106,7 @@ featureRoutes.patch("/attach", async (req, res, next) => {
       }
 
       res.json({ ok: true, updatedFeatureCollection: featureCollection, result: `Add Geometry Status: ${result}` });
-    } 
+    }
 
 
   } catch (e) {
