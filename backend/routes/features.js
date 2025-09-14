@@ -3,7 +3,7 @@ import { getFeatures, updateFeatures, addGeometryToFeature, createFeature } from
 import { getFileDataFromLayerID } from "../controllers/files.js";
 import { getOrCreateDefaultLayer } from "../controllers/layers.js";
 import { getKmzInfo, upadateFileHash } from "../controllers/kmzInfo.js";
-import { makeKmzFile } from "../controllers/download.js";
+import { makeKmzFile } from "../controllers/edit.js";
 import fs from "fs";
 
 export const featureRoutes = Router();

@@ -1,8 +1,6 @@
 import { PGISPool } from "../database.js";
 import path from "path";
 import yauzl from "yauzl";
-import { getFileAsLayersAndFeatures } from "./files.js";
-import { inject } from "../controllers/injector.js";
 import { fileURLToPath } from "url";
 import { writeFile } from "fs/promises";
 import fs from "fs";
@@ -30,21 +28,8 @@ export async function getFileData(fileId) {
   }
 }
 
-export async function makeKmzFile(id) {
-  const kmzFile = await getFileData(id);
-  const dbData = await getFileAsLayersAndFeatures(id);
-  const kmlFile = await extractKMLFromKMZ(kmzFile)
-    .then((kml) => {
-      return kml;
-    })
-    .catch(console.error);
-  console.log("kml extracted");
-  await inject(kmlFile, dbData, id);
-  const filePath = path.join(__dirname, "..", "temp", `${id}.kmz`);
-  return filePath;
-}
 
-function extractKMLFromKMZ(buffer) {
+export function extractKMLFromKMZ(buffer) {
   return new Promise((resolve, reject) => {
     yauzl.fromBuffer(buffer, { lazyEntries: true }, (err, zipfile) => {
       if (err) return reject(err);
