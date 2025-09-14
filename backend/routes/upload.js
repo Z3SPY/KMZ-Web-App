@@ -131,6 +131,7 @@ uploadRoutes.post("/", upload.single("file"), async (req, res) => {
         city,
         { sizeBytes: req.file.size, contentType: req.file.mimetype },
       );
+      console.log("stored to db...")
     } catch (e) {
       console.warn("storeToDB failed (continuing):", e.code);
       // if error code is unique constraint violation
