@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { getFileToDownload } from "../controllers/download.js";
+import { makeKmzFile } from "../controllers/download.js";
 import fs from "fs";
 
 export const downloadRoutes = Router();
 
 downloadRoutes.get("/:id", async (req, res) => {
   const { id } = req.params;
-  const filePath = await getFileToDownload(id);
+  const filePath = await makeKmzFile(id);
 
   res.download(filePath, (err) => {
     if (err) {

@@ -9,7 +9,7 @@ dotenv.config();
 
 export const PGISPool = new Pool();
 
-export async function setKmzHash(kmzId, kmzpath, meta) {
+export async function setKmzHash(kmzId, kmzpath, meta = {}) {
   const client = await PGISPool.connect();
   try {
     await client.query("BEGIN");
@@ -70,24 +70,6 @@ export async function storeToDB(
       ],
     );
     kmzId = kmzRes.rows[0].id;
-
-
-    // const kmzBytes = await fs.readFile(kmzpath);
-    // const sizeBytes = meta.sizeBytes ?? kmzBytes.length;
-    // const contentType = meta.contentType ?? "application/vnd.google-earth.kmz";
-    // const sha256 = crypto.createHash("sha256").update(kmzBytes).digest("hex");
-    //
-    // try {
-    //   if (!kmzBytes) return;
-    //   await client.query(
-    //     `INSERT INTO "KMZ_INFO"(id, file_id, data, size_bytes, sha256, content_type)
-    //      VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)`,
-    //     [kmzId, kmzBytes, sizeBytes, sha256, contentType],
-    //   );
-    // } catch (e) {
-    //   console.log(e);
-    //   throw e
-    // }
 
     for (const layer of layers) {
       if (!layer || layer.length === 0) continue;

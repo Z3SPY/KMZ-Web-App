@@ -3,6 +3,8 @@ import { getFeatures, updateFeatures, addGeometryToFeature, createFeature } from
 import { PGISPool } from "../database.js";
 import { getFileDataFromLayerID } from "../controllers/files.js";
 import { getOrCreateDefaultLayer } from "../controllers/layers.js";
+import { getKmzInfo } from "../controllers/kmzInfo.js";
+import { makeKmzFile } from "../controllers/download.js";
 
 export const featureRoutes = Router();
 
@@ -24,6 +26,9 @@ featureRoutes.patch("/saveEdit", async (req, res, next) => {
     }
 
     const result = await updateFeatures(updates);
+    const kmzId = await getKmzInfo(updates[0].id)
+    // makeKmzFile()
+    console.log("KMZ ID: ", kmzId)
     res.json({ ok: true, ...result });
   } catch (e) {
     next(e);
@@ -68,9 +73,9 @@ featureRoutes.post("/create", async (req, res, next) => {
 featureRoutes.patch("/attach", async (req, res, next) => {
   try {
 
-    const {id, geometry, mode} = req?.body;
+    const { id, geometry, mode } = req?.body;
     console.log(req.body);
-    if (!id || !geometry || geometry.coordinates.length === 0)  {
+    if (!id || !geometry || geometry.coordinates.length === 0) {
       console.log(req.body);
       return res.status(400).json({
         error: "Missing required values, unable to add geometry",
@@ -89,7 +94,7 @@ featureRoutes.patch("/attach", async (req, res, next) => {
       }
 
       res.json({ ok: true, updatedFeatureCollection: featureCollection, result: `Add Geometry Status: ${result}` });
-    } 
+    }
 
 
   } catch (e) {

@@ -27,7 +27,7 @@ export async function getFileData(fileId) {
   }
 }
 
-export async function getFileToDownload(id) {
+export async function makeKmzFile(id) {
   const kmzFile = await getFileData(id);
   const dbData = await getFileAsLayersAndFeatures(id);
   const kmlFile = await extractKMLFromKMZ(kmzFile)
