@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { getFeatures, updateFeatures, addGeometryToFeature, createFeature } from "../controllers/features.js";
-import { PGISPool } from "../database.js";
 import { getFileDataFromLayerID } from "../controllers/files.js";
 import { getOrCreateDefaultLayer } from "../controllers/layers.js";
-import { getKmzInfo } from "../controllers/kmzInfo.js";
+import { getKmzInfo, upadateFileHash } from "../controllers/kmzInfo.js";
 import { makeKmzFile } from "../controllers/download.js";
+import fs from "fs";
 
 export const featureRoutes = Router();
 
@@ -26,12 +26,24 @@ featureRoutes.patch("/saveEdit", async (req, res, next) => {
     }
 
     const result = await updateFeatures(updates);
-    const kmzId = await getKmzInfo(updates[0].id)
-    // makeKmzFile()
-    console.log("KMZ ID: ", kmzId)
+    const kmzInfo = await getKmzInfo(updates[0].id)
+    const filePath = await makeKmzFile(kmzInfo[0].file_id)
+    await upadateFileHash(kmzInfo[0].kmz_id, filePath).finally(() => {
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) {
+          console.error("Error deleting file:", unlinkErr);
+        } else {
+          console.log("File deleted successfully!");
+        }
+      })
+    })
+    console.log("KMZ ID: ", kmzInfo[0].kmz_id)
+
     res.json({ ok: true, ...result });
+
   } catch (e) {
     next(e);
+  } finally {
   }
 });
 

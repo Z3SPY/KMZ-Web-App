@@ -1,4 +1,6 @@
 import { PGISPool } from "../database.js";
+import crypto from "node:crypto";
+import fs from "node:fs/promises";
 
 export async function getKmzInfo(featureId) {
   const client = await PGISPool.connect();
@@ -17,13 +19,28 @@ export async function getKmzInfo(featureId) {
     const { rows } = await client.query(q, [featureId]);
     return rows;
   } catch (e) {
-    console.log(e)
+    console.log("getKmzInfo error: ", e)
 
   } finally {
     client.release();
   }
 }
 
-export async function upadateFileHash() {
-
+export async function upadateFileHash(kmzId, filePath) {
+  const kmzBytes = await fs.readFile(filePath);
+  const sha256 = crypto.createHash("sha256").update(kmzBytes).digest("hex");
+  const client = await PGISPool.connect();
+  try {
+    const q = `
+      UPDATE "KMZ_INFO"
+      SET sha256 = $1 
+      WHERE id = $2
+    `;
+    const { rows } = await client.query(q, [sha256, kmzId]);
+    return rows;
+  } catch (e) {
+    console.log("updateFileHash error: ", e)
+  } finally {
+    client.release();
+  }
 }
