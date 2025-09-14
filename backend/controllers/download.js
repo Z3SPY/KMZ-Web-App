@@ -4,6 +4,9 @@ import yauzl from "yauzl";
 import { getFileAsLayersAndFeatures } from "./files.js";
 import { inject } from "../controllers/injector.js";
 import { fileURLToPath } from "url";
+import { writeFile } from "fs/promises";
+import fs from "fs";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -66,4 +69,21 @@ function extractKMLFromKMZ(buffer) {
       );
     });
   });
+}
+
+export async function getFileToDownload(id) {
+  const kmzFile = await getFileData(id);
+
+  const filePath = path.join("temp", `${id}.kmz`);
+  if (!fs.existsSync("temp")) {
+    fs.mkdirSync(folder, { recursive: true });
+  }
+
+  try {
+    await writeFile(filePath, Buffer.from(kmzFile));
+    console.log(`File saved to ${filePath}`);
+  } catch (err) {
+    console.error("Error saving file:", err);
+  }
+  return filePath
 }
