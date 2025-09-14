@@ -26,17 +26,18 @@ export async function getKmzInfo(featureId) {
   }
 }
 
-export async function upadateFileHash(kmzId, filePath) {
+export async function updateFileHash(kmzId, filePath) {
   const kmzBytes = await fs.readFile(filePath);
   const sha256 = crypto.createHash("sha256").update(kmzBytes).digest("hex");
   const client = await PGISPool.connect();
   try {
     const q = `
       UPDATE "KMZ_INFO"
-      SET sha256 = $1 
-      WHERE id = $2
+      SET sha256 = $1,
+        data = $2
+      WHERE id = $3
     `;
-    const { rows } = await client.query(q, [sha256, kmzId]);
+    const { rows } = await client.query(q, [sha256, kmzBytes, kmzId]);
     return rows;
   } catch (e) {
     console.log("updateFileHash error: ", e)

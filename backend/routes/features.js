@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getFeatures, updateFeatures, addGeometryToFeature, createFeature } from "../controllers/features.js";
 import { getFileDataFromLayerID } from "../controllers/files.js";
 import { getOrCreateDefaultLayer } from "../controllers/layers.js";
-import { getKmzInfo, upadateFileHash } from "../controllers/kmzInfo.js";
+import { getKmzInfo, updateFileHash } from "../controllers/kmzInfo.js";
 import { makeKmzFile } from "../controllers/edit.js";
 import fs from "fs";
 
@@ -29,7 +29,7 @@ featureRoutes.patch("/saveEdit", async (req, res, next) => {
 
     const kmzInfo = await getKmzInfo(updates[0].id)
     const filePath = await makeKmzFile(kmzInfo[0].file_id)
-    await upadateFileHash(kmzInfo[0].kmz_id, filePath).finally(() => {
+    await updateFileHash(kmzInfo[0].kmz_id, filePath).finally(() => {
       fs.unlink(filePath, (unlinkErr) => {
         if (unlinkErr) {
           console.error("Error deleting file:", unlinkErr);
